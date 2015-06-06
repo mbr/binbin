@@ -1,0 +1,99 @@
+#!/bin/sh
+
+# syncto: rsync a directory to a remote, with filesystem watches.
+#         very useful when developing for a hardware that is only available
+#         remotely
+
+# Copyright (c) 2015 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+set -e
+
+show_usage() {
+  echo "usage: $(basename $0) [OPTS] [USER@]HOST:DEST_FOLDER [LOCAL_FOLDER]"
+}
+
+show_help() {
+  show_usage;
+  echo
+  echo "  -G, --no-exclude-git       do not exclude .git directories"
+  echo "  -n, --dry-run              no action, just test"
+  echo "  -v, --verbose              be verbose"
+  echo "  -x, --once                 just run rsync once"
+  echo "  -h, --help                 this help message"
+}
+
+TEMP=$(getopt -o nhvxG --long help,dry-run,verbose,once,no-exclude-git --name "$0" -- "$@")
+eval set -- "${TEMP}"
+
+# getopt failed?
+if [ $? != 0 ]; then
+  echo "Terminating..."
+  exit 1
+fi;
+
+RSYNC_OPTS="--progress --human-readable --delete --delete-after --rsh=ssh --archive"
+INOTIFYWAIT_OPTS="--recursive --event=modify --event=move --event=create --event=delete"
+INOTIFYWAIT_QUIET="--quiet"
+ONCE=
+EXCLUDE_GIT=true
+
+while true; do
+  case "$1" in
+    -n|--dry-run) RSYNC_OPTS="${RSYNC_OPTS} --dry-run"; shift;;
+    -v|--verbose)
+      RSYNC_OPTS="${RSYNC_OPTS} --verbose";
+      INOTIFYWAIT_QUIET="";
+      shift;;
+    -G|--no-exclude-git) EXCLUDE_GIT=""; shift;;
+    -x|--once) ONCE="true"; shift;;
+    -h|--help) show_help; exit 0;;
+    --) shift; break;;
+  esac
+done;
+
+if [ $EXCLUDE_GIT ]; then
+  RSYNC_OPTS="${RSYNC_OPTS} --exclude=.git/ --exclude=.gitignore";
+  INOTIFYWAIT_OPTS="@.git/ @.gitignore"
+fi;
+
+DEST="$1"
+SRC="$2"
+
+if [ "$SRC" = "" ]; then
+  SRC=$(dirname .)
+fi;
+
+if [ "$DEST" = "" ]; then
+  show_usage;
+  exit 1;
+fi;
+
+echo "${SRC} => ${DEST}"
+while true; do
+  rsync ${RSYNC_OPTS} "${SRC}" "${DEST}"
+
+  if [ $ONCE ]; then
+    break
+  fi;
+
+  # wait for file change
+  inotifywait ${INOTIFYWAIT_OPTS} ${INOTIFYWAIT_QUIET} "${SRC}"
+done;
