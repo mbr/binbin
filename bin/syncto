@@ -33,6 +33,7 @@ show_usage() {
 show_help() {
   show_usage;
   echo
+  echo "  -D  --no-delete            do not clean up removed remote files"
   echo "  -G, --no-exclude-git       do not exclude .git directories"
   echo "  -n, --dry-run              no action, just test"
   echo "  -v, --verbose              be verbose"
@@ -40,7 +41,7 @@ show_help() {
   echo "  -h, --help                 this help message"
 }
 
-TEMP=$(getopt -o nhvxG --long help,dry-run,verbose,once,no-exclude-git --name "$0" -- "$@")
+TEMP=$(getopt -o nhvxGD --long help,dry-run,verbose,once,no-exclude-git,no-delete --name "$0" -- "$@")
 eval set -- "${TEMP}"
 
 # getopt failed?
@@ -49,11 +50,12 @@ if [ $? != 0 ]; then
   exit 1
 fi;
 
-RSYNC_OPTS="--progress --human-readable --delete --delete-after --rsh=ssh --archive"
+RSYNC_OPTS="--progress --human-readable --rsh=ssh --archive"
 INOTIFYWAIT_OPTS="--recursive --event=modify --event=move --event=create --event=delete"
 INOTIFYWAIT_QUIET="--quiet"
 ONCE=
 EXCLUDE_GIT=true
+DELETE=true
 
 while true; do
   case "$1" in
@@ -62,6 +64,7 @@ while true; do
       RSYNC_OPTS="${RSYNC_OPTS} --verbose";
       INOTIFYWAIT_QUIET="";
       shift;;
+    -D|--no-delete) DELETE=""; shift;;
     -G|--no-exclude-git) EXCLUDE_GIT=""; shift;;
     -x|--once) ONCE="true"; shift;;
     -h|--help) show_help; exit 0;;
@@ -72,6 +75,10 @@ done;
 if [ $EXCLUDE_GIT ]; then
   RSYNC_OPTS="${RSYNC_OPTS} --exclude=.git/ --exclude=.gitignore";
   INOTIFYWAIT_OPTS="@.git/ @.gitignore"
+fi;
+
+if [ $DELETE ]; then
+  RSYNC_OPTS="${RSYNC_OPTS} --delete --delete-after";
 fi;
 
 DEST="$1"
