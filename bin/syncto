@@ -36,7 +36,7 @@ show_help() {
   echo "  -D  --no-delete            do not clean up removed remote files"
   echo "  -G, --no-exclude-git       do not exclude .git directories"
   echo "  -n, --dry-run              no action, just test"
-  echo "  -v, --verbose              be verbose"
+  echo "  -v, --verbose              be verbose (can be given twice)"
   echo "  -x, --once                 just run rsync once"
   echo "  -h, --help                 this help message"
 }
@@ -56,13 +56,20 @@ INOTIFYWAIT_QUIET="--quiet"
 ONCE=
 EXCLUDE_GIT=true
 DELETE=true
+VERBOSE=
 
 while true; do
   case "$1" in
     -n|--dry-run) RSYNC_OPTS="${RSYNC_OPTS} --dry-run"; shift;;
     -v|--verbose)
-      RSYNC_OPTS="${RSYNC_OPTS} --verbose";
-      INOTIFYWAIT_QUIET="";
+      if [ $VERBOSE ]; then
+        # already verbose, be really verbose
+        VERBOSE="debug";
+      else
+        RSYNC_OPTS="${RSYNC_OPTS} --verbose";
+        INOTIFYWAIT_QUIET="";
+        VERBOSE=true
+      fi;
       shift;;
     -D|--no-delete) DELETE=""; shift;;
     -G|--no-exclude-git) EXCLUDE_GIT=""; shift;;
@@ -91,6 +98,10 @@ fi;
 if [ "$DEST" = "" ]; then
   show_usage;
   exit 1;
+fi;
+
+if [ "$VERBOSE" = "debug" ]; then
+  set -x
 fi;
 
 echo "${SRC} => ${DEST}"
