@@ -41,7 +41,6 @@ if not '--help' in sys.argv[1:]:
     vals = dict(VAL_RE.findall(output))
 
     cmd.extend([
-        'byzanz-record',
         '--x={}'.format(int(vals['Absolute upper-left X'])),
         '--y={}'.format(int(vals['Absolute upper-left Y'])),
         '--width={}'.format(int(vals['Width'])),
@@ -49,4 +48,4 @@ if not '--help' in sys.argv[1:]:
     ])
 
 cmd.extend(sys.argv[1:])
-os.execvp(cmd[0], cmd[1:])
+os.execvp(cmd[0], cmd)
