@@ -27,25 +27,63 @@
 
 from __future__ import print_function
 
+import argparse
 import os
 import re
 import subprocess
-import sys
+
+try:
+    from pipes import quote as shell_quote
+except ImportError:
+    from shlex import quote as shell_quote
+
+VAL_RE = re.compile('^  (.[^\n:]+): ([^\n]*)$', re.MULTILINE)
+WIN_ID_RE = re.compile('Window id: (0x[0-9a-f]+)')
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-w', '--wait', help='Exit recording once window closes',
+                    action='store_true')
+parser.add_argument('-f', '--force', help='Overwrite existing file',
+                    action='store_true')
+parser.add_argument('-c', '--crop', default=0, type=int,
+                    help='Crop this many pixels around')
+parser.add_argument('output_file', help='Output file, will be checked')
+args, unknown = parser.parse_known_args()
+
+if os.path.exists(args.output_file):
+    if args.force:
+        os.unlink(args.output_file)
+    else:
+        print('File already exists, byzanz will not overwrite existing files.')
+        raise SystemExit(1)
 
 cmd = ['byzanz-record']
-if not '--help' in sys.argv[1:]:
-    VAL_RE = re.compile('^  (.[^\n:]+): ([^\n]*)$', re.MULTILINE)
 
-    print('Please click the window you wish to record')
-    output = subprocess.check_output(['xwininfo'])
-    vals = dict(VAL_RE.findall(output))
+print('Please click the window you wish to record')
+output = subprocess.check_output(['xwininfo'])
+vals = dict(VAL_RE.findall(output))
+win_id = WIN_ID_RE.findall(output)[0]
 
-    cmd.extend([
-        '--x={}'.format(int(vals['Absolute upper-left X'])),
-        '--y={}'.format(int(vals['Absolute upper-left Y'])),
-        '--width={}'.format(int(vals['Width'])),
-        '--height={}'.format(int(vals['Height'])),
-    ])
+delay = 0.01
 
-cmd.extend(sys.argv[1:])
-os.execvp(cmd[0], cmd)
+if args.wait:
+    # start shell that polls until the window is gone
+    wait_cmd = "/bin/sh -c " + shell_quote(
+        'while xprop -id {} 2> /dev/null 1>/dev/null;'
+        'do sleep {}; done;'.format(win_id, delay))
+
+    cmd.extend(['--exec', wait_cmd])
+
+cmd.extend([
+    '--x={}'.format(int(vals['Absolute upper-left X']) + args.crop),
+    '--y={}'.format(int(vals['Absolute upper-left Y']) + args.crop),
+    '--width={}'.format(int(vals['Width']) - args.crop),
+    '--height={}'.format(int(vals['Height']) - args.crop),
+])
+
+cmd.extend(unknown)
+cmd.append(args.output_file)
+
+# call record
+subprocess.check_call(cmd)
