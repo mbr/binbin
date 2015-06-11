@@ -81,7 +81,7 @@ done;
 
 if [ $EXCLUDE_GIT ]; then
   RSYNC_OPTS="${RSYNC_OPTS} --exclude=.git/ --exclude=.gitignore";
-  INOTIFYWAIT_OPTS="@.git/ @.gitignore"
+  INOTIFYWAIT_OPTS="@.git/ @.gitignore $INOTIFYWAIT_OPTS"
 fi;
 
 if [ $DELETE ]; then
