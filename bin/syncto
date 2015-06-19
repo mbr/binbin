@@ -50,7 +50,7 @@ if [ $? != 0 ]; then
   exit 1
 fi;
 
-RSYNC_OPTS="--progress --human-readable --rsh=ssh --archive"
+RSYNC_OPTS="--progress --human-readable --rsh=ssh --archive --no-owner --no-group"
 INOTIFYWAIT_OPTS="--recursive --event=modify --event=move --event=create --event=delete"
 INOTIFYWAIT_QUIET="--quiet"
 ONCE=
