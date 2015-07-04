@@ -13,6 +13,7 @@ case "$MODE" in
     echo "Disabling DPMS and screensaver"
     xset -dpms
     xset s off
+    xscreensaver-command -exit
     ;;
   on)
     echo "Enabling DPMS and screensaver"
