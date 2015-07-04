@@ -1,0 +1,25 @@
+#!/bin/sh
+
+set -e
+
+MODE=$1
+
+if [ $# -eq 0 ]; then
+  MODE=off
+fi;
+
+case "$MODE" in
+  off)
+    echo "Disabling DPMS and screensaver"
+    xset -dpms
+    xset s off
+    ;;
+  on)
+    echo "Enabling DPMS and screensaver"
+    xset dpms
+    xset s on
+    ;;
+  *)
+    echo "Invalid mode: $MODE"
+    ;;
+esac
