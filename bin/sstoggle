@@ -2,6 +2,8 @@
 
 set -e
 
+# solves https://xkcd.com/196/
+
 MODE=$1
 
 if [ $# -eq 0 ]; then
