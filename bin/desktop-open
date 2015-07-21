@@ -1,0 +1,64 @@
+#!/usr/bin/python
+
+# desktop-open: When link as NAME, will search for a NAME.desktop file and open
+#               the described application
+
+# Copyright (c) 2015 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+from __future__ import print_function, unicode_literals
+
+
+import os
+import shlex
+import sys
+
+from xdg.DesktopEntry import DesktopEntry
+
+
+name = os.path.basename(sys.argv[0])
+
+if name == 'desktop-open':
+    if len(sys.argv) == 2:
+        name = sys.argv[1]
+    else:
+        print('Please link this script using another name or provide an '
+              'argument.')
+        sys.exit(1)
+
+
+# search path: maybe we should get this from xdg?
+desktop_paths = [os.path.expanduser('~/.local/share/applications'),
+                 '/usr/share/applications']
+
+for path in desktop_paths:
+    fn = os.path.join(path, '{}.desktop'.format(name))
+
+    if os.path.exists(fn):
+        d = DesktopEntry(fn)
+        break
+else:
+    print('Desktop file {}.desktop not found.'.format(name))
+    sys.exit(1)
+
+args = shlex.split(d.getExec())
+
+# replace running script with new program
+os.execvp(args[0], args)
