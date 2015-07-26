@@ -1,0 +1,85 @@
+#!/usr/bin/python
+
+import os
+import subprocess
+import sys
+import re
+import tempfile
+
+import inotifyx
+
+VALUE = r""""""
+
+# not 100% correct, but good enough for now
+STRACE_REGEX = re.compile(
+    r'^(?:(?P<pid>\d+)\s*)?'
+    r'(?P<call>[a-z]+)\((?P<args>[^)]*)\)\s*=\s*(?P<retval>\d+)$'
+)
+
+
+def parse_strace(log):
+    rv = []
+    for line in log.splitlines():
+        m = STRACE_REGEX.match(line)
+        if m:
+            d = m.groupdict()
+            d['retval'] = int(d['retval'])
+
+            # also broken, i only got 5 minutes though
+            d['args'] = [
+                arg[1:-1] if arg.startswith('"') else arg
+                for arg in d['args'].split(',')
+            ]
+            rv.append(d)
+    return rv
+
+
+cmd = sys.argv[1:]
+
+with tempfile.NamedTemporaryFile() as tmp:
+    trace_cmd = ['strace', '-f', '-o', tmp.name, '-e', 'trace=open'] + cmd
+
+    while True:
+        p = subprocess.Popen(trace_cmd)
+        p.wait()
+
+        # read log
+        tmp.seek(0)
+        log = tmp.read()
+
+        files_touched = set()
+
+        for syscall in parse_strace(log):
+            fn = syscall['args'][0]
+            if fn in ('0', '1', '2'):
+                # ignore stdin, stdout, stderr
+                continue
+
+            valid = True
+            for prefix in ('/etc', '/usr', '/lib', '/proc', '/dev'):
+                if fn.startswith(prefix):
+                    valid = False
+            if not valid:
+                continue
+
+            files_touched.add(fn)
+
+        # setup notify
+        fd = inotifyx.init()
+
+        try:
+            mask = (
+                inotifyx.IN_CREATE |
+                inotifyx.IN_DELETE |
+                inotifyx.IN_MODIFY
+            )
+            for fn in files_touched:
+                if not os.path.exists(fn):
+                    continue
+                #print 'watching', fn
+                inotifyx.add_watch(fd, fn, mask)
+
+            ev = inotifyx.get_events(fd)
+            print 'change detected'
+        finally:
+            os.close(fd)
