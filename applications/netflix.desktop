@@ -3,7 +3,7 @@ Type=Application
 Version=1.0
 Name=Netflix
 Comment=Online Movie Streaming
-Exec=google-chrome --app=https://netflix.com
+Exec=sh -c "google-chrome --app=https://netflix.com --user-data-dir=${HOME}/.netflix_profile"
 Icon=netflix
 Terminal=false
 Categories=Video;TV
