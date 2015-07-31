@@ -4,6 +4,7 @@
 
 import argparse
 import subprocess
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file', dest='files', action='append',
@@ -11,6 +12,10 @@ parser.add_argument('-f', '--file', dest='files', action='append',
 parser.add_argument('cmd', nargs='*')
 
 args = parser.parse_args()
+
+# by default, watch current directory
+if not args.files:
+    args.files = ['.']
 
 while True:
     # run command
