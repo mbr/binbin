@@ -8,6 +8,14 @@ Each file usually comes with a descriptive name, documentation inside the file
 and, if you're lucky, a ``--help`` flag.
 
 
+applications
+------------
+
+Some programs come with ``.desktop`` files to fit neatly into whatever you are
+using to launch your applications. Copy any of these to
+``~/.local/share/applications``.
+
+
 Other useful things
 -------------------
 
