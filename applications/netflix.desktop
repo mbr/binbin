@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Netflix
+Comment=Online Movie Streaming
+Exec=google-chrome --app=https://netflix.com
+Icon=netflix
+Terminal=false
+Categories=Video;TV
