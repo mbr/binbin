@@ -77,6 +77,7 @@ def cli(obj):
 def list_sources(ppa):
     for dist in ppa.get_dists():
         click.echo('deb {}/ubuntu {} main'.format(ppa.base_url, dist))
+        click.echo('deb-src {}/ubuntu {} main'.format(ppa.base_url, dist))
 
 
 if __name__ == '__main__':
