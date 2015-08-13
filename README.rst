@@ -8,7 +8,17 @@ Each file usually comes with a descriptive name, documentation inside the file
 and, if you're lucky, a ``--help`` flag.
 
 
-applications
+Prerequisites
+~~~~~~~~~~~~~
+
+Most tools are self-containted and written in either Python or (if small
+enough) shell script.
+
+Some may require additional Python packages to be installed systemwide, the
+most common being `click <http://click.pocoo.org>`_.
+
+
+Applications
 ------------
 
 Some programs come with ``.desktop`` files to fit neatly into whatever you are
