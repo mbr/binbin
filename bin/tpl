@@ -1,0 +1,192 @@
+#!/usr/bin/python3
+
+from collections import OrderedDict
+import configparser
+import os
+import re
+import sys
+
+import click
+from jinja2 import Environment, FileSystemLoader, meta
+
+
+class Template(object):
+    def __init__(self, name, fn_exp=None, path=None, tpl_fn=None):
+        self.name = name
+        self.fn_exp = fn_exp
+        self.path = path
+        self.tpl_fn = tpl_fn
+
+        # template environment
+        self.env = Environment(loader=FileSystemLoader(path))
+
+    def get_vars(self):
+        tpl_src = self.env.loader.get_source(self.env, self.tpl_fn)
+        ast = self.env.parse(tpl_src, filename=self.tpl_fn)
+        return meta.find_undeclared_variables(ast)
+
+    # def render_filename(self, **vars):
+    #     tpl = self.env.from_string(self.tpl_fn)
+
+    #     return tpl.render(**vars)
+
+    def render_file(self, **vars):
+        # check if we need to append a newline
+        src, path, _ = self.env.loader.get_source(self.env, self.tpl_fn)
+        newline = '\n' if src.endswith('\n') else ''
+
+        # render
+        tpl = self.env.get_template(self.tpl_fn)
+        return tpl.render(**vars) + newline
+
+    @classmethod
+    def load(cls, path):
+        conf_fn = os.path.join(path, 'tpl.conf')
+
+        config = configparser.ConfigParser()
+        config.read(conf_fn)
+
+        fn_exp = config['Template'].get('match', None)
+        if fn_exp:
+            fn_exp = re.compile(fn_exp)
+
+        name = config['Template'].get('name', os.path.basename(path))
+
+        return cls(name,
+                   fn_exp=fn_exp,
+                   path=path,
+                   tpl_fn=config['Template']['file'])
+
+
+class TemplateManager(object):
+    def __init__(self):
+        self.tpls = OrderedDict()
+
+    def load_templates(self, *paths):
+        for path in paths:
+            for d in os.listdir(path):
+                dn = os.path.join(path, d)
+                if not os.path.isdir(dn) or d in ('.', '..'):
+                    continue
+
+                if not dn in self.tpls:
+                    self.tpls[dn] = Template.load(dn)
+
+    def iter_templates(self):
+        return iter(self.tpls.values())
+
+    def match_filename(self, name):
+        matches = []
+
+        for tpl in self.iter_templates():
+            m = tpl.fn_exp.match(name)
+
+            if m:
+                name = m.group(1) if tpl.fn_exp.groups else m.group(0)
+                matches.append((name, tpl))
+
+        return matches
+
+
+def load_templates(paths):
+    tpls = []
+    for path in paths:
+        for d in os.listdir(path):
+            dn = os.path.join(path, d)
+            if not os.path.isdir(dn) or d in ('.', '..'):
+                continue
+
+            tpls.append(Template.load(dn))
+    return tpls
+
+
+@click.group()
+@click.option('-p', '--template-path',
+              default=None,
+              envvar='TPL_TEMPLATE_PATH')
+@click.pass_obj
+def cli(obj, template_path):
+    obj['TEMPLATE_PATH'] = []
+
+    if template_path:
+        obj['TEMPLATE_PATH'] = template_path.split(os.pathsep)
+
+    manager = TemplateManager()
+    manager.load_templates(*obj['TEMPLATE_PATH'])
+    obj['MANAGER'] = manager
+
+
+@cli.command(help='Display template search paths')
+@click.pass_obj
+def path(obj):
+    for path in obj['TEMPLATE_PATH']:
+        click.echo(path)
+
+
+@cli.command(help='List all templates found')
+@click.pass_obj
+def list(obj):
+    for tpl in obj['MANAGER'].iter_templates():
+        click.secho(tpl.name, fg='green')
+
+        def print_attr(k, v):
+            click.echo('{:>10s}: {}'.format(k, v))
+
+        print_attr('path', tpl.path)
+
+        if tpl.fn_exp:
+            print_attr('match', tpl.fn_exp.pattern)
+
+        print_attr('variables', sorted(tpl.get_vars()))
+
+
+@cli.command(help='Create new file from template')
+@click.argument('dest', type=click.Path(exists=False, dir_okay=False))
+@click.pass_obj
+def new(obj, dest):
+    if os.path.exists(dest):
+        click.echo('File exists: {}'.format(dest), err=True)
+        sys.exit(1)
+
+    # select a template
+    matches = obj['MANAGER'].match_filename(dest)
+
+    if not matches:
+        click.echo(
+            'No matching template found for filename \'{}\''.format(dest),
+            err=True)
+        sys.exit(1)
+
+    if len(matches) > 1:
+        click.echo('Multiple matches found for filename \'{}\':'.format(dest),
+                   err=True)
+        for name, tpl in matches:
+            click.echo('{}: {}'.format(tpl.name, name))
+        sys.exit(1)
+
+    # we've got one exactly match
+    name, tpl = matches[0]
+
+    missing_vars = tpl.get_vars()
+    vars = {'name': name}
+
+    # we've got the name already from the filename
+    missing_vars.discard('name')
+
+    # collect missing variables
+    for varname in sorted(missing_vars):
+        vars[varname] = click.prompt(
+            '{} {}'.format(name, click.style(varname,
+                                             fg='yellow')),
+            default='')
+
+    with open(dest, 'w') as out:
+        out.write(tpl.render_file(**vars))
+
+    click.echo('creating new {} "{}" in {}'.format(tpl.name, name,
+                                                   click.style(dest,
+                                                               fg='green')))
+
+
+if __name__ == '__main__':
+    cli(obj={})
