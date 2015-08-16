@@ -32,6 +32,39 @@ import click
 from jinja2 import Environment, FileSystemLoader, meta
 
 
+class TplConfig(configparser.ConfigParser):
+    @classmethod
+    def get_config_path(cls):
+        return os.path.join(click.get_app_dir('tpl'), 'tpl.conf')
+
+    @classmethod
+    def load_user_config(cls):
+        cfg = cls()
+        cfg.read(cls.get_config_path())
+
+        return cfg
+
+    def save_user_config(self):
+        self.ensure_configfile()
+
+        with open(self.get_config_path(), 'w') as out:
+            self.write(out)
+
+    @classmethod
+    def ensure_configfile(cls):
+        config_fn = cls.get_config_path()
+        config_dir = os.path.dirname(config_fn)
+
+        if not os.path.exists(config_dir):
+            os.makedirs(config_dir)
+
+        if not os.path.exists(config_fn):
+            with open(config_fn, 'w') as out:
+                out.write('')
+
+        return config_fn
+
+
 class Template(object):
     def __init__(self, name, fn_exp=None, path=None, tpl_fn=None):
         self.name = name
@@ -136,6 +169,73 @@ def cli(obj, template_path):
     manager = TemplateManager()
     manager.load_templates(*obj['TEMPLATE_PATH'])
     obj['MANAGER'] = manager
+
+    # load configuration
+    obj['CONFIG'] = TplConfig.load_user_config()
+
+
+@cli.group('config', help='Manage configuration')
+def cfg():
+    pass
+
+
+@cfg.command('show', help='Show configuration')
+@click.pass_obj
+def cfg_show(obj):
+    config_fn = obj['CONFIG'].get_config_path()
+
+    if not os.path.exists(config_fn):
+        click.echo('Configuration file {} not found'.format(config_fn),
+                   err=True)
+        sys.exit(1)
+
+    with open(config_fn) as cf:
+        click.echo(cf.read(), nl=False)
+
+
+@cfg.command('edit', help='Open configuration in default editor')
+@click.pass_obj
+def cfg_edit(obj):
+    click.edit(filename=obj['CONFIG'].ensure_configfile())
+
+
+@cfg.command('set', help='Set default value')
+@click.option('-t', '--tpl',
+              default='*',
+              help='Template to set value for (default: global)')
+@click.argument('key')
+@click.argument('value')
+@click.pass_obj
+def cfg_set(obj, tpl, key, value):
+    config = obj['CONFIG']
+
+    if tpl not in config:
+        config[tpl] = {}
+
+    config[tpl][key] = value
+
+    config.save_user_config()
+
+
+@cfg.command('unset', help='Drop a configuration value')
+@click.option('-t', '--tpl',
+              default='*',
+              help='Template to set value for (default: global)')
+@click.argument('key')
+@click.pass_obj
+def cfg_unset(obj, tpl, key):
+    config = obj['CONFIG']
+
+    if tpl not in config:
+        return
+
+    if key in config[tpl]:
+        del config[tpl][key]
+
+    if not config[tpl]:
+        del config[tpl]
+
+    config.save_user_config()
 
 
 @cli.command(help='Display template search paths')
