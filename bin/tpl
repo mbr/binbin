@@ -66,11 +66,12 @@ class TplConfig(configparser.ConfigParser):
 
 
 class Template(object):
-    def __init__(self, name, fn_exp=None, path=None, tpl_fn=None):
+    def __init__(self, name, fn_exp=None, path=None, tpl_fn=None, defaults={}):
         self.name = name
         self.fn_exp = fn_exp
         self.path = path
         self.tpl_fn = tpl_fn
+        self.defaults = defaults
 
         # template environment
         self.env = Environment(loader=FileSystemLoader(path))
@@ -107,10 +108,13 @@ class Template(object):
 
         name = config['Template'].get('name', os.path.basename(path))
 
+        defaults = config['Defaults'] if 'Defaults' in config else {}
+
         return cls(name,
                    fn_exp=fn_exp,
                    path=path,
-                   tpl_fn=config['Template']['file'])
+                   tpl_fn=config['Template']['file'],
+                   defaults=defaults)
 
 
 class TemplateManager(object):
@@ -299,7 +303,8 @@ def new(obj, dest):
     missing_vars.discard('name')
 
     # set up lookup chain for defaults
-    defaults = ChainMap()
+    defaults = ChainMap(tpl.defaults)
+
     if tpl.name in config:
         defaults.maps.append(config[tpl.name])
     if '*' in config:
