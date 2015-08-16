@@ -22,7 +22,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from collections import OrderedDict
+from collections import OrderedDict, ChainMap
 import configparser
 import os
 import re
@@ -266,6 +266,8 @@ def list(obj):
 @click.argument('dest', type=click.Path(exists=False, dir_okay=False))
 @click.pass_obj
 def new(obj, dest):
+    config = obj['CONFIG']
+
     if os.path.exists(dest):
         click.echo('File exists: {}'.format(dest), err=True)
         sys.exit(1)
@@ -290,17 +292,25 @@ def new(obj, dest):
     name, tpl = matches[0]
 
     missing_vars = tpl.get_vars()
+
     vars = {'name': name}
 
     # we've got the name already from the filename
     missing_vars.discard('name')
+
+    # set up lookup chain for defaults
+    defaults = ChainMap()
+    if tpl.name in config:
+        defaults.maps.append(config[tpl.name])
+    if '*' in config:
+        defaults.maps.append(config['*'])
 
     # collect missing variables
     for varname in sorted(missing_vars):
         vars[varname] = click.prompt(
             '{} {}'.format(name, click.style(varname,
                                              fg='yellow')),
-            default='')
+            default=defaults.get(varname, ''))
 
     with open(dest, 'w') as out:
         out.write(tpl.render_file(**vars))
