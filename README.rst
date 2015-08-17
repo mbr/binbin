@@ -34,3 +34,4 @@ Additional tools that would fit into binbin, but have grown enough to warrant
 their own repository:
 
 * https://github.com/mbr/repl
+* https://github.com/mbr/wrimg
