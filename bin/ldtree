@@ -1,0 +1,98 @@
+#!/usr/bin/python
+
+# ldtree: recursively list linked-libraries
+
+# Copyright (c) 2015 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import asciitree
+from collections import OrderedDict
+import os
+import re
+import subprocess
+import sys
+
+LD_LINE_EXP = re.compile(
+    r'^\s*(?P<lib>.*?)\s*\((?P<tags>.*?)\)\s*=>\s*(?P<path>.*)$')
+OBJDUMP_LINE_EXP = re.compile(r'^\s*NEEDED\s*(?P<lib>.*)\s*$')
+
+TAGS = 'libc6,x86-64'
+
+
+def filter_output(args, exp):
+    buf = subprocess.check_output(args)
+    for line in buf.splitlines():
+        m = exp.match(line)
+        if m:
+            yield m
+
+
+def read_cache():
+    libs = {}
+
+    for m in filter_output(['/sbin/ldconfig', '-p'], LD_LINE_EXP):
+        lib, path = m.group('lib'), m.group('path')
+        tags = tuple(sorted(t.strip() for t in m.group('tags').split(',')))
+
+        libs.setdefault(lib, {})
+
+        libs[lib][tags] = path
+
+    return libs
+
+
+def get_file_libs(fn):
+    libs = []
+    for m in filter_output(['objdump', '-p', fn], OBJDUMP_LINE_EXP):
+        libs.append(m.group('lib'))
+    return libs
+
+
+def build_tree(fn, tags, cache):
+    if not os.path.exists(fn):
+        return {'NOT FOUND': fn}
+
+    libs = OrderedDict()
+
+    for lib in get_file_libs(fn):
+        cand = None
+
+        if lib not in cache:
+            libs[lib] = {'not found ({})'.format(tags): {}}
+        elif tags in cache[lib]:
+            cand = cache[lib][tags]
+        else:
+            for lib_tags, lfn in cache[lib].items():
+                if set(tags) < set(lib_tags):
+                    cand = lfn
+
+        if cand:
+            lib_name = '{} ({})'.format(lib, cand)
+            libs[lib_name] = build_tree(cand, tags=tags, cache=cache)
+
+    return libs
+
+
+if __name__ == '__main__':
+    tags = tuple(sorted(TAGS.split(',')))
+    tr = asciitree.LeftAligned()
+    data = build_tree(sys.argv[1], tags=tags, cache=read_cache())
+
+    print tr(data)
