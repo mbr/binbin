@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+# xdg-gmail: Similiar to desktop-webmail, found in the Ubuntu repositories.
+# Three key differences:
+#
+#   1. It will always use Chrome/Chromium as the browser.
+#   2. It only supports GMail.
+#   3. (most important): It uses the chromium **app mode**.
+#
+# To use, simply open up *System* -> *Preferences* -> *Preferred Applications*
+# and use this script as your email program.
+#
+# Installing on GNOME 3 without root permissions
+# ----------------------------------------------
+# To install this to the little bar on the left side of the screen, some more
+# steps need to be taken:
+#
+#   1. Ensure xdg-gmail is in your path.
+#   2. Copy the `xdg-gmail.desktop` file to `~/.local/share/applications/`.
+#   3. Copy the icon `gmail.png` to `~/.local/share/icons`.
+#   4. (optional) To make mailto: links open with this script, add the
+#      following line to `~/.local/share/applications/mimeapps.list`
+#
+#      `x-scheme-handler/mailto=xdg-gmail.desktop`
+#
+#      If there's a previous entry for `x-scheme-handler/mailto`, remove it.
+
+import argparse
+from configparser import ConfigParser
+from functools import reduce
+import os
+from urllib.parse import quote
+
+import click
+
+import sys
+
+DEFAULT_COMMANDS = ['google-chrome',
+                    'google-chrome-stable',
+                    'google-chrome-beta',
+                    'google-chrome-unstable',
+                    'chromium-browser',
+                    'chromium', ]
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    'mailto',
+    nargs='?',
+    help=(
+        'Can either be a mailto link, in which case a new mail window will be '
+        'opened or nothing, to open the inbox.'),
+    default=None)
+parser.add_argument(
+    '--cmd',
+    default=None,
+    help=(
+        'Which command to use for opening chrome/chromium. If not set, '
+        '{!r} are tried in order.'.format(DEFAULT_COMMANDS)))
+parser.add_argument('-v', '--verbose',
+                    default=False,
+                    action='store_true',
+                    help='Show command before running it.')
+parser.add_argument('-n', '--dry-run',
+                    default=False,
+                    action='store_true',
+                    help='Don\'t actually run anything.')
+args = parser.parse_args()
+
+if not args.cmd:
+    if os.path.exists(''):
+        pass
+    cmd = reduce(lambda c, n: c or which(n), DEFAULT_COMMANDS, None)
+
+    if cmd is None:
+        print('Could not find command to launch.\n'
+              'None supplied on command-line '
+              'and none of {} found.'.format(DEFAULT_COMMANDS))
+        sys.exit(1)
+else:
+    cmd = args.cmd
+
+if not args.mailto:
+    cmd.append('--app=https://mail.google.com/mail')
+else:
+    cmd.append('--app=https://mail.google.com/mail?extsrc=mailto&url={}'
+               .format(quote(args.mailto,
+                             safe="")))
+
+if args.verbose:
+    print(' '.join(cmd))
+
+if not args.dry_run:
+    os.execvp(cmd[0], cmd)

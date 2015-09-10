@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Name=GoogleMail
+GenericName=Email
+Comment=Send and Receive Email
+Exec=xdg-gmail chromium %u
+Icon=gmail.png
+Terminal=false
+Type=Application
+MimeType=message/rfc822;x-scheme-handler/mailto;
+StartupNotify=false
+Categories=Network;Email;
