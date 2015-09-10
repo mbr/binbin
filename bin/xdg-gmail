@@ -25,10 +25,10 @@
 #
 #      If there's a previous entry for `x-scheme-handler/mailto`, remove it.
 
-import argparse
 from configparser import ConfigParser
 from functools import reduce
 import os
+from shutil import which
 from urllib.parse import quote
 
 import click
@@ -42,52 +42,55 @@ DEFAULT_COMMANDS = ['google-chrome',
                     'chromium-browser',
                     'chromium', ]
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    'mailto',
-    nargs='?',
-    help=(
-        'Can either be a mailto link, in which case a new mail window will be '
-        'opened or nothing, to open the inbox.'),
-    default=None)
-parser.add_argument(
-    '--cmd',
-    default=None,
-    help=(
-        'Which command to use for opening chrome/chromium. If not set, '
-        '{!r} are tried in order.'.format(DEFAULT_COMMANDS)))
-parser.add_argument('-v', '--verbose',
-                    default=False,
-                    action='store_true',
-                    help='Show command before running it.')
-parser.add_argument('-n', '--dry-run',
-                    default=False,
-                    action='store_true',
-                    help='Don\'t actually run anything.')
-args = parser.parse_args()
 
-if not args.cmd:
-    if os.path.exists(''):
-        pass
-    cmd = reduce(lambda c, n: c or which(n), DEFAULT_COMMANDS, None)
+@click.command(help='Send an email via GMail, using mailto-link or address.')
+@click.argument('mailto', nargs=-1)
+@click.option('--cmd', '-c',
+              help='Which command to use for opening chrome/chromium.'
+              'If not set, {!r} are tried in order.'.format(DEFAULT_COMMANDS))
+@click.option('--verbose/--quiet', '-v/-q',
+              help='Show/hide command before running it')
+@click.option('--dry-run', '-n',
+              is_flag=True,
+              default=False,
+              help='Don\'t actually run anything')
+def cli(mailto, cmd, verbose, dry_run):
+    conffile = os.path.join(click.get_app_dir('xdg-gmail'), 'config.ini')
+    cfg = ConfigParser()
+    cfg.read(conffile)
+    cmd = cmd or cfg['xdg-gmail'].get('cmd', None)
 
-    if cmd is None:
-        print('Could not find command to launch.\n'
-              'None supplied on command-line '
-              'and none of {} found.'.format(DEFAULT_COMMANDS))
-        sys.exit(1)
-else:
-    cmd = args.cmd
+    # first, determine cmd
+    if not cmd:
+        cmd = reduce(lambda c, n: c or which(n), DEFAULT_COMMANDS, None)
 
-if not args.mailto:
-    cmd.append('--app=https://mail.google.com/mail')
-else:
-    cmd.append('--app=https://mail.google.com/mail?extsrc=mailto&url={}'
-               .format(quote(args.mailto,
-                             safe="")))
+        if cmd is None:
+            click.echo('Could not find command to launch.\n'
+                       'None supplied on command-line '
+                       'and none of {} found.'.format(DEFAULT_COMMANDS))
+            sys.exit(1)
 
-if args.verbose:
-    print(' '.join(cmd))
+    args = [cmd]
 
-if not args.dry_run:
-    os.execvp(cmd[0], cmd)
+    # FIXME: support mailing multiple address in a single email
+    if mailto:
+        mailto = mailto[0]
+
+    if not mailto:
+        args.append('--app=https://mail.google.com/mail')
+    else:
+        if not mailto.startswith('mailto:'):
+            mailto = 'mailto:' + mailto
+        args.append('--app=https://mail.google.com/mail?extsrc=mailto&url={}'
+                    .format(quote(mailto,
+                                  safe="")))
+
+    if verbose:
+        click.echo(' '.join(args))
+
+    if not dry_run:
+        os.execvp(args[0], args)
+
+
+if __name__ == '__main__':
+    cli()
