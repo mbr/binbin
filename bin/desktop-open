@@ -49,7 +49,9 @@ desktop_paths = [os.path.expanduser('~/.local/share/applications'),
                  '/usr/share/applications']
 
 for path in desktop_paths:
-    fn = os.path.join(path, '{}.desktop'.format(name))
+    fn = os.path.join(path, name)
+    if not fn.endswith('.desktop'):
+        fn += '.desktop'
 
     if os.path.exists(fn):
         d = DesktopEntry(fn)
