@@ -1,0 +1,95 @@
+#!/usr/bin/python3
+
+# mkusbstick: Formats a USB stick with a suitable filesystem that can be read
+# by any recent Windows, Mac OS X and Linux version.
+
+# Copyright (c) 2015 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import click
+import subprocess
+
+
+@click.command()
+@click.argument('device', type=click.Path(dir_okay=False, writable=True))
+@click.option('--confirm/--no-confirm', '-i/-b', default=True)
+@click.option('--secure-erase/--no-secure-erase', '-s/-S',
+              help='Secure erase first (implies --wipe)',
+              is_flag=True)
+@click.option('--fs-type',
+              default='FAT32',
+              type=click.Choice(['NTFS', 'FAT32']))
+@click.option('-l', '--label',
+              default='usbstick',
+              help='Label for new filesystem (default: "usbstick")')
+def cli(device, secure_erase, confirm, fs_type, label):
+    prompt = 'Create {} partition on '.format(fs_type)
+    if secure_erase:
+        prompt += 'and ' + click.style('secure erase ', fg='red')
+    prompt += click.style(device, fg='yellow')
+
+    if confirm:
+        click.confirm(prompt, abort=True)
+
+    if secure_erase:
+        subprocess.check_call([
+            'shred',
+            '--iterations=1',
+            '--zero',
+            '--verbose',
+            device,
+        ])
+
+    # wipe first 4 MB of stick, to remove any mbr/uefi/whatever information
+    subprocess.check_call([
+        'dd',
+        'if=/dev/zero',
+        'of={}'.format(device),
+        'bs=512',
+        'count=8192',
+    ])
+
+    # create partitions
+    commands = 'o\nn\np\n1\n\n\nw\n'.encode('ascii')
+    fdisk_proc = subprocess.Popen(['fdisk', device], stdin=subprocess.PIPE)
+    fdisk_proc.communicate(commands)
+    fdisk_proc.wait()
+    assert fdisk_proc.returncode == 0
+
+    # filesystem creation
+    part = device + '1'
+    if fs_type == 'NTFS':
+        cmd = ['mkfs.ntfs', '--fast', '-I', '-U', '-v']
+        if label:
+            cmd.extend(('-L', label))
+        cmd.append(part)
+    elif fs_type == 'FAT32':
+        cmd = ['mkfs.vfat']
+        if label:
+            cmd.extend(('-n', label.upper()))
+        cmd.append(part)
+    else:
+        assert False
+
+    subprocess.check_call(cmd)
+
+
+if __name__ == '__main__':
+    cli()
