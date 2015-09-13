@@ -36,10 +36,13 @@ import subprocess
 @click.option('--fs-type',
               default='FAT32',
               type=click.Choice(['NTFS', 'FAT32']))
+@click.option('--partition/--no-partition', '-p/-P',
+              default=False,
+              help='Create partition table and single partition (default: no)')
 @click.option('-l', '--label',
               default='usbstick',
               help='Label for new filesystem (default: "usbstick")')
-def cli(device, secure_erase, confirm, fs_type, label):
+def cli(device, secure_erase, confirm, fs_type, label, partition):
     prompt = 'Create {} partition on '.format(fs_type)
     if secure_erase:
         prompt += 'and ' + click.style('secure erase ', fg='red')
@@ -66,25 +69,28 @@ def cli(device, secure_erase, confirm, fs_type, label):
         'count=8192',
     ])
 
-    # create partitions
-    commands = 'o\nn\np\n1\n\n\nw\n'.encode('ascii')
-    fdisk_proc = subprocess.Popen(['fdisk', device], stdin=subprocess.PIPE)
-    fdisk_proc.communicate(commands)
-    fdisk_proc.wait()
-    assert fdisk_proc.returncode == 0
+    target = device
+    if partition:
+        # create partitions
+        commands = 'o\nn\np\n1\n\n\nw\n'.encode('ascii')
+        fdisk_proc = subprocess.Popen(['fdisk', device], stdin=subprocess.PIPE)
+        fdisk_proc.communicate(commands)
+        fdisk_proc.wait()
+        assert fdisk_proc.returncode == 0
+        target = device + '1'
 
     # filesystem creation
-    part = device + '1'
     if fs_type == 'NTFS':
         cmd = ['mkfs.ntfs', '--fast', '-I', '-U', '-v']
         if label:
             cmd.extend(('-L', label))
-        cmd.append(part)
+        cmd.append(target)
     elif fs_type == 'FAT32':
-        cmd = ['mkfs.vfat']
+        # 16 sectors per cluster, seems to be the most common setting?
+        cmd = ['mkfs.vfat', '-s', '16', '-I']
         if label:
             cmd.extend(('-n', label.upper()))
-        cmd.append(part)
+        cmd.append(target)
     else:
         assert False
 
