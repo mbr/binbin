@@ -134,6 +134,15 @@ class TemplateManager(object):
     def iter_templates(self):
         return iter(self.tpls.values())
 
+    def match_template_name(self, name):
+        matches = []
+
+        for tpl in self.iter_templates():
+            if tpl.name == name:
+                matches.append(tpl)
+
+        return matches
+
     def match_filename(self, name):
         matches = []
 
@@ -272,28 +281,50 @@ def list(obj):
 def new(obj, dest):
     config = obj['CONFIG']
 
-    if os.path.exists(dest):
-        click.echo('File exists: {}'.format(dest), err=True)
+    tpl = None
+    name = dest
+    if ':' in dest:
+        tpl_name, name = dest.split(':', 1)
+        matches = obj['MANAGER'].match_template_name(tpl_name)
+
+        if not matches:
+            click.echo('No template named \'{}\' found.'.format(tpl_name),
+                       err=True)
+            sys.exit(1)
+
+        if len(matches) > 1:
+            click.echo(
+                'Multiple matches found for template name \'{}\'.'.format(
+                    tpl_name),
+                err=True)
+            sys.exit(1)
+
+        tpl = matches[0]
+
+    if os.path.exists(name):
+        click.echo('File exists: {}'.format(name), err=True)
         sys.exit(1)
 
     # select a template
-    matches = obj['MANAGER'].match_filename(dest)
+    if tpl is None:
+        matches = obj['MANAGER'].match_filename(name)
 
-    if not matches:
-        click.echo(
-            'No matching template found for filename \'{}\''.format(dest),
-            err=True)
-        sys.exit(1)
+        if not matches:
+            click.echo(
+                'No matching template found for filename \'{}\''.format(name),
+                err=True)
+            sys.exit(1)
 
-    if len(matches) > 1:
-        click.echo('Multiple matches found for filename \'{}\':'.format(dest),
-                   err=True)
-        for name, tpl in matches:
-            click.echo('{}: {}'.format(tpl.name, name))
-        sys.exit(1)
+        if len(matches) > 1:
+            click.echo(
+                'Multiple matches found for filename \'{}\':'.format(name),
+                err=True)
+            for name, tpl in matches:
+                click.echo('{}: {}'.format(tpl.name, name))
+            sys.exit(1)
 
-    # we've got one exactly match
-    name, tpl = matches[0]
+        # we've got one exactly match
+        name, tpl = matches[0]
 
     missing_vars = tpl.get_vars()
 
@@ -317,11 +348,11 @@ def new(obj, dest):
                                              fg='yellow')),
             default=defaults.get(varname, ''))
 
-    with open(dest, 'w') as out:
+    with open(name, 'w') as out:
         out.write(tpl.render_file(**vars))
 
     click.echo('creating new {} "{}" in {}'.format(tpl.name, name,
-                                                   click.style(dest,
+                                                   click.style(name,
                                                                fg='green')))
 
 
