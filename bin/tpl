@@ -277,14 +277,13 @@ def list(obj):
 
 @cli.command(help='Create new file from template')
 @click.argument('dest', type=click.Path(exists=False, dir_okay=False))
+@click.option('-t', '--tpl', 'tpl_name', help='Template type')
 @click.pass_obj
-def new(obj, dest):
+def new(obj, dest, tpl_name):
     config = obj['CONFIG']
 
     tpl = None
-    name = dest
-    if ':' in dest:
-        tpl_name, name = dest.split(':', 1)
+    if tpl_name is not None:
         matches = obj['MANAGER'].match_template_name(tpl_name)
 
         if not matches:
@@ -300,24 +299,25 @@ def new(obj, dest):
             sys.exit(1)
 
         tpl = matches[0]
+        name = os.path.basename(dest)
 
-    if os.path.exists(name):
-        click.echo('File exists: {}'.format(name), err=True)
+    if os.path.exists(dest):
+        click.echo('File exists: {}'.format(dest), err=True)
         sys.exit(1)
 
     # select a template
     if tpl is None:
-        matches = obj['MANAGER'].match_filename(name)
+        matches = obj['MANAGER'].match_filename(dest)
 
         if not matches:
             click.echo(
-                'No matching template found for filename \'{}\''.format(name),
+                'No matching template found for filename \'{}\''.format(dest),
                 err=True)
             sys.exit(1)
 
         if len(matches) > 1:
             click.echo(
-                'Multiple matches found for filename \'{}\':'.format(name),
+                'Multiple matches found for filename \'{}\':'.format(dest),
                 err=True)
             for name, tpl in matches:
                 click.echo('{}: {}'.format(tpl.name, name))
@@ -348,11 +348,11 @@ def new(obj, dest):
                                              fg='yellow')),
             default=defaults.get(varname, ''))
 
-    with open(name, 'w') as out:
+    with open(dest, 'w') as out:
         out.write(tpl.render_file(**vars))
 
     click.echo('creating new {} "{}" in {}'.format(tpl.name, name,
-                                                   click.style(name,
+                                                   click.style(dest,
                                                                fg='green')))
 
 
