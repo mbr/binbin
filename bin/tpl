@@ -334,12 +334,30 @@ def new(obj, dest, tpl_name):
     missing_vars.discard('name')
 
     # set up lookup chain for defaults
-    defaults = ChainMap(tpl.defaults)
+    defaults = ChainMap({'name': name})
+
+    defaults.maps.insert(0, tpl.defaults)
 
     if tpl.name in config:
         defaults.maps.append(config[tpl.name])
     if '*' in config:
         defaults.maps.append(config['*'])
+
+    # substitution: allow $var in defaults as a placeholder
+    subs = {}
+    defaults.maps.insert(0, subs)
+
+    for i in range(100):
+        sub_found = False
+        for key, value in defaults.items():
+            if value.startswith('$'):
+                subs[key] = defaults.get(value[1:], 'NOT FOUND')
+                sub_found = True
+        if not sub_found:
+            break
+    else:
+        click.echo('Substitution limit exceeded')
+        sys.exit(1)
 
     # collect missing variables
     for varname in sorted(missing_vars):
