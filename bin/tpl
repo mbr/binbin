@@ -147,6 +147,9 @@ class TemplateManager(object):
         matches = []
 
         for tpl in self.iter_templates():
+            if not tpl.fn_exp:
+                continue
+
             m = tpl.fn_exp.match(name)
 
             if m:
