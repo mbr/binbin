@@ -128,7 +128,7 @@ class TemplateManager(object):
                 if not os.path.isdir(dn) or d in ('.', '..'):
                     continue
 
-                if not dn in self.tpls:
+                if dn not in self.tpls:
                     self.tpls[dn] = Template.load(dn)
 
     def iter_templates(self):
