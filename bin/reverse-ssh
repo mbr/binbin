@@ -36,7 +36,7 @@ def main():
     # check if we're root
     if os.getuid() != 0:
         print('Sorry, you are not root. Please run this script with sudo.')
-        #sys.exit(1)
+        sys.exit(1)
 
     # ask first:
     if not confirm(
@@ -63,7 +63,7 @@ def main():
 
     if not chpass.returncode == 0:
         print('Failed to change password')
-        #sys.exit(1)
+        sys.exit(1)
 
     # ssh is ready to go, now connect to gateway server
     gateway = sys.argv[1] if len(sys.argv) > 1 else input('Gateway server?: ')
