@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+
+from __future__ import print_function
+
+import base64
+import getpass
+import os
+import sys
+from shutil import which
+import subprocess
+
+
+def confirm(msg):
+    print(msg + ' [y/n] ', end='')
+    l = sys.stdin.readline().strip()
+    if l != 'y':
+        return False
+    return True
+
+
+def color(s, color):
+    ESCSEQ = '\x1b['
+    return ESCSEQ + color + 'm' + str(s) + ESCSEQ + 'm'
+
+
+BLUE = '0;34;40'
+YELLOW = '1;32;40'
+RED = '1;31;40'
+
+
+def main():
+    # generate a random password, 6 bytes is hopefully enough
+    user = getpass.getuser()
+    pw = base64.b64encode(os.urandom(10)).decode('ascii').rstrip('=')
+
+    # check if we're root
+    if os.getuid() != 0:
+        print('Sorry, you are not root. Please run this script with sudo.')
+        #sys.exit(1)
+
+    # ask first:
+    if not confirm(
+        'Warning: This script will grant access to this machine. Please '
+        'only run this when using a LiveCD.\nContinue?'
+    ):
+        sys.exit(1)
+
+    # first, ensure sshd is installed
+    # which works on ubuntu, but some are more strict and don't add /usr/sbin
+    # to path
+    if not which('sshd') and not os.path.exists('/usr/sbin/sshd'):
+        print('sshd is not installed, installing using apt-get')
+        subprocess.check_call(['apt-get', 'update'])
+        subprocess.check_call(['apt-get', 'install', '-y', 'openssh-server'])
+
+    # alright, sshd is running, now change the password for the current user
+    print('Changing password for user {} to {}'.format(
+        color(user, BLUE), color(pw, YELLOW)
+        ))
+    chpass = subprocess.Popen(['/usr/sbin/chpasswd'], stdin=subprocess.PIPE)
+    chpass.communicate('{}:{}\n'.encode('ascii'))
+    chpass.wait()
+
+    if not chpass.returncode == 0:
+        print('Failed to change password')
+        #sys.exit(1)
+
+    # ssh is ready to go, now connect to gateway server
+    gateway = sys.argv[1] if len(sys.argv) > 1 else input('Gateway server?: ')
+
+    if not gateway:
+        print('not a valid gateway server')
+        sys.exit(1)
+
+    port = sys.argv[2] if len(sys.argv) > 2 else input('Port (default: 22)?: ')
+    if not port:
+        port = 22
+    else:
+        port = int(port)
+    fw_port = 1234
+
+    print('Connecting to gateway server, forwarding port {} to local sshd'
+          .format(color(fw_port, RED)))
+    subprocess.check_call(['ssh',
+                           '-N',
+                           '-R', '1234:localhost:22',
+                           '-p', str(port),
+                           gateway])
+
+
+if __name__ == '__main__':
+    main()
