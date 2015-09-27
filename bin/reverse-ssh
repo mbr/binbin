@@ -33,11 +33,6 @@ def main():
     user = getpass.getuser()
     pw = base64.b64encode(os.urandom(10)).decode('ascii').rstrip('=')
 
-    # check if we're root
-    if os.getuid() != 0:
-        print('Sorry, you are not root. Please run this script with sudo.')
-        sys.exit(1)
-
     # ask first:
     if not confirm(
         'Warning: This script will grant access to this machine. Please '
@@ -50,15 +45,16 @@ def main():
     # to path
     if not which('sshd') and not os.path.exists('/usr/sbin/sshd'):
         print('sshd is not installed, installing using apt-get')
-        subprocess.check_call(['apt-get', 'update'])
-        subprocess.check_call(['apt-get', 'install', '-y', 'openssh-server'])
+        subprocess.check_call(['sudo', 'apt-get', 'update'])
+        subprocess.check_call(['sudo', 'apt-get', 'install', '-y',
+                               'openssh-server'])
 
     # alright, sshd is running, now change the password for the current user
     print('Changing password for user {} to {}'.format(
         color(user, BLUE), color(pw, YELLOW)
         ))
-    chpass = subprocess.Popen(['/usr/sbin/chpasswd'], stdin=subprocess.PIPE)
-    chpass.communicate('{}:{}\n'.encode('ascii'))
+    chpass = subprocess.Popen(['sudo', 'chpasswd'], stdin=subprocess.PIPE)
+    chpass.communicate('{}:{}\n'.format(user, pw).encode('ascii'))
     chpass.wait()
 
     if not chpass.returncode == 0:
