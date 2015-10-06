@@ -15,8 +15,8 @@ Most tools are self-containted and written in either Python or (if small
 enough) shell script.
 
 Some may require additional Python packages to be installed systemwide, the
-most common being `click <http://click.pocoo.org>`_ and `requests
-<http://python-requests.org>`_
+most common being `click <http://click.pocoo.org>`_, `jinja2
+<http://jinja.pocoo.org>`_ and `requests <http://python-requests.org>`_.
 
 
 Applications
