@@ -33,6 +33,7 @@ show_usage() {
 show_help() {
   show_usage;
   echo
+  echo "  -e  --exclude              exclude paths from syncing"
   echo "  -D  --no-delete            do not clean up removed remote files"
   echo "  -G, --no-exclude-git       do not exclude .git directories"
   echo "  -n, --dry-run              no action, just test"
@@ -41,7 +42,7 @@ show_help() {
   echo "  -h, --help                 this help message"
 }
 
-TEMP=$(getopt -o nhvxGD --long help,dry-run,verbose,once,no-exclude-git,no-delete --name "$0" -- "$@")
+TEMP=$(getopt -o nhvxGDe: --long help,dry-run,verbose,once,no-exclude-git,no-delete,exclude: --name "$0" -- "$@")
 eval set -- "${TEMP}"
 
 # getopt failed?
@@ -75,6 +76,7 @@ while true; do
     -G|--no-exclude-git) EXCLUDE_GIT=""; shift;;
     -x|--once) ONCE="true"; shift;;
     -h|--help) show_help; exit 0;;
+    -e|--exclude) shift; RSYNC_OPTS="${RSYNC_OPTS} --exclude=$1"; INOTIFYWAIT_OPTS="@$1 ${INOTIFYWAIT_OPTS}"; shift;;
     --) shift; break;;
   esac
 done;
