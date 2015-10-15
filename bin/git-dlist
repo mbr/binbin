@@ -63,7 +63,7 @@ def dlist(path, branch, remote, verbose):
         try:
             stdout = subprocess.check_output(
                 ['git', 'log', '--pretty=oneline',
-                 '{}/{}..{}'.format(remote, branch, branch)],
+                 '{}/{}..refs/heads/{}'.format(remote, branch, branch)],
                 cwd=repo_path,
                 stderr=subprocess.STDOUT).decode()
         except subprocess.CalledProcessError:
