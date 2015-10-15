@@ -1,0 +1,91 @@
+#!/usr/bin/python3
+
+# git-dlist: Show unpushed changes in many repositories.
+
+# Copyright (c) 2015 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import os
+
+import click
+import subprocess
+
+
+@click.command(help='A git-integrated command that outputs for each '
+               'repository in a path whether or not it has unpushed '
+               'changes.')
+@click.argument('path',
+                default='.',
+                type=click.Path(file_okay=False,
+                                dir_okay=True,
+                                exists=True))
+@click.option('-b',
+              '--branch',
+              default='master',
+              help='The branch to check for non-uploadedness')
+@click.option('-r',
+              '--remote',
+              default='origin',
+              help='Remote to check against')
+@click.option('-v',
+              '--verbose',
+              default=False,
+              is_flag=True,
+              help='Output unchanged repositories as well')
+def dlist(path, branch, remote, verbose):
+    for dirpath, dirnames, filenames in os.walk(path):
+        if not dirpath.endswith('.git'):
+            continue
+
+        if dirpath == '.git':
+            # not a bare repo
+            repo_path = os.path.dirname(dirpath)
+        else:
+            repo_path = dirpath
+
+        try:
+            stdout = subprocess.check_output(
+                ['git', 'log', '--pretty=oneline',
+                 '{}/{}..{}'.format(remote, branch, branch)],
+                cwd=repo_path,
+                stderr=subprocess.STDOUT).decode()
+        except subprocess.CalledProcessError:
+            click.secho(repo_path, fg='red')
+            if stdout:
+                click.echo('  {}'.format(stdout.splitlines()[0]))
+            continue
+
+        commits = [line.split(' ', 1) for line in stdout.splitlines()]
+
+        if not commits:
+            if not verbose:
+                continue
+            click.secho(repo_path, fg='green')
+        else:
+            click.echo('{}: {} behind'.format(
+                click.style(repo_path,
+                            fg='yellow'),
+                len(commits)))
+            for commit, msg in commits:
+                click.echo('    {} {}'.format(commit[:6], msg))
+
+
+if __name__ == '__main__':
+    dlist()
