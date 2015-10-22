@@ -31,12 +31,19 @@
 # DEALINGS IN THE SOFTWARE.
 
 
+import argparse
 from ConfigParser import SafeConfigParser
 import os.path
 import random
 import subprocess
 import sys
 import time
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-A', '--no-app', action='store_true', default=False,
+                    help='Disable app mode (e.g. to allow Chromecast)')
+args = parser.parse_args()
 
 cfg = SafeConfigParser()
 cfg.read(os.path.expanduser('~/.usflixrc'))
@@ -70,7 +77,8 @@ try:
     data_dir = os.path.expanduser(browser_opts.get('data_dir', '~/.usflix'))
     browser_cmd = [
         browser_opts.get('exec', 'google-chrome'),
-        '--app={}'.format(browser_opts.get('url', 'https://netflix.com')),
+        '--app={}'.format(browser_opts.get('url', 'https://netflix.com'))
+        if not args.no_app else browser_opts.get('url', 'https://netflix.com'),
         '--user-data-dir={}'.format(data_dir),
         '--proxy-server=socks5://localhost:{}'.format(socks_port)
     ]
