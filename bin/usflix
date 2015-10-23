@@ -43,6 +43,8 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('-A', '--no-app', action='store_true', default=False,
                     help='Disable app mode (e.g. to allow Chromecast)')
+parser.add_argument('-P', '--no-proxy', action='store_true', default=False,
+                    help='Do not activate proxy')
 args = parser.parse_args()
 
 cfg = SafeConfigParser()
@@ -68,7 +70,8 @@ if 'port' in ssh_opts:
 
 ssh_cmd.append('{0[user]}@{0[host]}'.format(ssh_opts))
 
-ssh = subprocess.Popen(ssh_cmd)
+if not args.no_proxy:
+    ssh = subprocess.Popen(ssh_cmd)
 try:
     # wait for socks connection
     print 'Waiting for SSH SOCKS to come up on port {}'.format(socks_port)
@@ -80,8 +83,11 @@ try:
         '--app={}'.format(browser_opts.get('url', 'https://netflix.com'))
         if not args.no_app else browser_opts.get('url', 'https://netflix.com'),
         '--user-data-dir={}'.format(data_dir),
-        '--proxy-server=socks5://localhost:{}'.format(socks_port)
     ]
+
+    if not args.no_proxy:
+        browser_cmd.append(
+            '--proxy-server=socks5://localhost:{}'.format(socks_port))
 
     if sys.platform == 'darwin':
         browser_cmd = (['open', '-W', '-n'] + [browser_cmd[0], '--args']
@@ -92,6 +98,7 @@ try:
     print('All applications launched, waiting for exit...')
     browser.wait()
 finally:
-    ssh.kill()
+    if not args.no_proxy:
+        ssh.kill()
 
 print('done')
