@@ -281,8 +281,9 @@ def list(obj):
 @cli.command(help='Create new file from template')
 @click.argument('dest', type=click.Path(exists=False, dir_okay=False))
 @click.option('-t', '--tpl', 'tpl_name', help='Template type')
+@click.option('-f', '--force', is_flag=True, help='Overwrite existing files')
 @click.pass_obj
-def new(obj, dest, tpl_name):
+def new(obj, dest, tpl_name, force):
     config = obj['CONFIG']
 
     tpl = None
@@ -304,7 +305,7 @@ def new(obj, dest, tpl_name):
         tpl = matches[0]
         name = os.path.basename(dest)
 
-    if os.path.exists(dest):
+    if not force and os.path.exists(dest):
         click.echo('File exists: {}'.format(dest), err=True)
         sys.exit(1)
 
