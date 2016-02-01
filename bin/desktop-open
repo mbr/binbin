@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-# desktop-open: When link as NAME, will search for a NAME.desktop file and open
-#               the described application
+# desktop-open: When linked as NAME, will search for a NAME.desktop file and
+#               open the associated application
 
 # Copyright (c) 2015 Marc Brinkmann
 
@@ -25,13 +25,11 @@
 
 from __future__ import print_function, unicode_literals
 
-
 import os
 import shlex
 import sys
 
 from xdg.DesktopEntry import DesktopEntry
-
 
 name = os.path.basename(sys.argv[0])
 
@@ -42,7 +40,6 @@ if name == 'desktop-open':
         print('Please link this script using another name or provide an '
               'argument.')
         sys.exit(1)
-
 
 # search path: maybe we should get this from xdg?
 desktop_paths = [os.path.expanduser('~/.local/share/applications'),
