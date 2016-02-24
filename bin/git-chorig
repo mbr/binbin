@@ -1,0 +1,51 @@
+#!/usr/bin/python3
+
+# git-chorig: Replace origin of a git repository, updating tracking as well
+
+# Copyright (c) 2016 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import click
+import subprocess
+
+
+@click.command(help='Replaces the origin of a git repository and updates '
+               'tracking information of the master branch')
+@click.argument('new-origin')
+@click.option('--remote',
+              '-r',
+              default='origin',
+              help='The remote name (default: origin)')
+@click.option('--branch',
+              default='master',
+              help='Branch to set tracking on (default: master)')
+@click.option('--remote-branch',
+              help='Remote branch to track (default: same as --branch)')
+def git_chorig(new_origin, remote, remote_branch, branch):
+    subprocess.check_call(['git', 'remote', 'rm', remote])
+    subprocess.check_call(['git', 'remote', 'add', remote, new_origin])
+    subprocess.check_call(['git', 'fetch'])
+    subprocess.check_call(['git', 'branch', '--set-upstream-to',
+                           '{}/{}'.format(remote, remote_branch or
+                                          branch), branch])
+
+
+if __name__ == '__main__':
+    git_chorig()
