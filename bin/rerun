@@ -6,10 +6,17 @@ import click
 import subprocess
 import sys
 
+QUIET = False
+
 
 def exit_err(msg, exitcode=1):
     click.secho(msg, file=sys.stderr, fg='red')
     sys.exit(exitcode)
+
+
+def info(msg):
+    if not QUIET:
+        click.secho(msg, fg='white')
 
 
 @click.command()
@@ -20,27 +27,38 @@ def exit_err(msg, exitcode=1):
               multiple=True,
               default=['.'],
               help='file or dir to watch (default: .)')
-def cli(files, cmd):
+@click.option('-q', '--quiet', is_flag=True, default=False)
+def cli(files, cmd, quiet):
+    global QUIET
+    QUIET = quiet
+
     if not cmd:
         exit_err('missing command')
         sys.exit(1)
 
-    files = list(files)
+    inotify_args = [
+        'inotifywait',
+        '--recursive',
+        '--quiet',
+        '--event',
+        'modify,create,delete,move',
+    ]
+
+    inotify_args.extend(files)
 
     while True:
         # run command
+        info('Running {}'.format(' '.join(cmd)))
         p = subprocess.Popen(cmd)
         p.wait()
 
         # watch for changes
-        click.echo('Waiting for changes...')
-        p = subprocess.Popen([
-            'inotifywait',
-            '--quiet',
-            '--recursive',
-            '--event',
-            'modify,create,delete,move',
-        ] + files)
+        info('Waiting for changes...')
+
+        p = subprocess.Popen(
+            inotify_args,
+            stderr=None if not quiet else open('/dev/null', 'wb'),
+            stdout=None if not quiet else open('/dev/null', 'wb'))
         p.wait()
         if p.returncode != 0:
             exit_err('inotifywait failed: {}/{}', p.stdout, p.stderr)
