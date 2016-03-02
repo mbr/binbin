@@ -5,6 +5,7 @@
 import click
 import subprocess
 import sys
+import time
 
 QUIET = False
 
@@ -62,17 +63,30 @@ def cli(files, cmd, quiet, clear):
 
         # run command
         info('running ' + click.style('{}'.format(' '.join(cmd)), fg='yellow'))
+
+        start = time.time()
         p = subprocess.Popen(cmd)
         p.wait()
+        total = time.time() - start
 
         # watch for changes
-        info('waiting for changes...')
+        total_s = click.style('{:.4}s'.format(total),
+                              fg='green' if p.returncode == 0 else 'red')
+        status_s = click.style(
+            'ok',
+            fg='green') if p.returncode == 0 else click.style(
+                'err({})'.format(p.returncode),
+                fg='red')
+
+        info(status_s + ', took {} seconds. waiting for changes...'.format(
+            total_s))
 
         p = subprocess.Popen(
             inotify_args,
             stderr=None if not quiet else open('/dev/null', 'wb'),
             stdout=None if not quiet else open('/dev/null', 'wb'))
         p.wait()
+
         if p.returncode != 0:
             exit_err('inotifywait failed: {}/{}', p.stdout, p.stderr)
 
