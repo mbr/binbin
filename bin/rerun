@@ -1,33 +1,50 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # argparse, because we don't want external dependenceis
 
-import argparse
+import click
 import subprocess
 import sys
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--file', dest='files', action='append',
-                    help='file to watch')
-parser.add_argument('cmd', nargs='*')
 
-args = parser.parse_args()
+def exit_err(msg, exitcode=1):
+    click.secho(msg, file=sys.stderr, fg='red')
+    sys.exit(exitcode)
 
-# by default, watch current directory
-if not args.files:
-    args.files = ['.']
 
-while True:
-    # run command
-    p = subprocess.Popen(args.cmd)
-    p.wait()
+@click.command()
+@click.argument('cmd', nargs=-1)
+@click.option('-f',
+              '--file',
+              'files',
+              multiple=True,
+              default=['.'],
+              help='file or dir to watch (default: .)')
+def cli(files, cmd):
+    if not cmd:
+        exit_err('missing command')
+        sys.exit(1)
 
-    # watch for changes
-    print 'Waiting for changes...'
-    p = subprocess.Popen([
-        'inotifywait',
-        '--quiet',
-        '--recursive',
-        '--event', 'modify,create,delete,move',
-    ] + args.files)
-    p.wait()
+    files = list(files)
+
+    while True:
+        # run command
+        p = subprocess.Popen(cmd)
+        p.wait()
+
+        # watch for changes
+        click.echo('Waiting for changes...')
+        p = subprocess.Popen([
+            'inotifywait',
+            '--quiet',
+            '--recursive',
+            '--event',
+            'modify,create,delete,move',
+        ] + files)
+        p.wait()
+        if p.returncode != 0:
+            exit_err('inotifywait failed: {}/{}', p.stdout, p.stderr)
+
+
+if __name__ == '__main__':
+    cli()
