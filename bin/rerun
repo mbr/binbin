@@ -88,7 +88,7 @@ def cli(files, cmd, quiet, clear):
         p.wait()
 
         if p.returncode != 0:
-            exit_err('inotifywait failed: {}/{}', p.stdout, p.stderr)
+            exit_err('inotifywait failed: {}/{}'.format(p.stdout, p.stderr))
 
 
 if __name__ == '__main__':
