@@ -82,7 +82,7 @@ def cli(files, cmd, quiet, clear, clear_and_banner):
     run_count = 0
 
     while True:
-        run_count = 1
+        run_count += 1
         if clear or clear_and_banner:
             click.clear()
             click.secho(
