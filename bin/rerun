@@ -10,6 +10,25 @@ import time
 QUIET = False
 
 
+def banner(text):
+    w, h = click.get_terminal_size()
+
+    lines = []
+    hr = ' ' * w
+
+    lines.append(hr)
+
+    padding = (w - 2) - len(text)
+    pad_left = padding // 2
+    pad_right = padding // 2 + padding % 2
+
+    lines.append(' ' + ' ' * pad_left + text + ' ' * pad_right + ' ')
+
+    lines.append(hr)
+
+    return '\n'.join(lines)
+
+
 def exit_err(msg, exitcode=1):
     click.secho(msg, file=sys.stderr, fg='red')
     sys.exit(exitcode)
@@ -38,7 +57,12 @@ def info(msg):
               is_flag=True,
               default=False,
               help='Clear screen before executing command')
-def cli(files, cmd, quiet, clear):
+@click.option('-C',
+              '--clear-and-banner',
+              is_flag=True,
+              default=False,
+              help='Clear screen and output banner before executing command')
+def cli(files, cmd, quiet, clear, clear_and_banner):
     global QUIET
     QUIET = quiet
 
@@ -55,10 +79,17 @@ def cli(files, cmd, quiet, clear):
     ]
 
     inotify_args.extend(files)
+    run_count = 0
 
     while True:
-        if clear:
+        run_count = 1
+        if clear or clear_and_banner:
             click.clear()
+            click.secho(
+                banner('rerun: {:6d}'.format(run_count)),
+                bg='blue',
+                fg='white',
+                bold=True)
             sys.stdout.flush()
 
         # run command
