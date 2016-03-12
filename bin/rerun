@@ -18,7 +18,13 @@ def banner(text):
 
     lines.append(hr)
 
-    padding = (w - 2) - len(text)
+    l = len(text)
+    if 6 < (w - 2) < l:
+        l = w - 6
+        text = text[:l] + '...'
+        l += 3
+
+    padding = max(0, (w - 2) - l)
     pad_left = padding // 2
     pad_right = padding // 2 + padding % 2
 
@@ -80,20 +86,24 @@ def cli(files, cmd, quiet, clear, clear_and_banner):
 
     inotify_args.extend(files)
     run_count = 0
+    cmd_name = ' '.join(cmd)
 
     while True:
         run_count += 1
         if clear or clear_and_banner:
             click.clear()
-            click.secho(
-                banner('rerun: {:6d}'.format(run_count)),
-                bg='blue',
-                fg='white',
-                bold=True)
+
+            if clear_and_banner:
+                banner_text = '{:6d} : {}'.format(run_count, cmd_name)
+                click.secho(
+                    banner(banner_text),
+                    bg='blue',
+                    fg='white',
+                    bold=True)
             sys.stdout.flush()
 
         # run command
-        info('running ' + click.style('{}'.format(' '.join(cmd)), fg='yellow'))
+        info('running ' + click.style('{}'.format(cmd_name), fg='yellow'))
 
         start = time.time()
         p = subprocess.Popen(cmd)
