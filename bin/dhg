@@ -27,11 +27,18 @@ import sys
 
 import click
 from docker import Client
-from docker.errors import APIError
 
 
 def fmt_image(repo):
     return '{} [{}]'.format(repo['Id'], ', '.join(repo['RepoTags']))
+
+
+def fmt_container(cnr):
+    return '{} [{}]'.format(cnr['Id'], ', '.join(cnr['Names']))
+
+
+def fmt_container_short(cnr):
+    return cnr['Id'][:12]
 
 
 def fmt_image_short(repo):
@@ -82,9 +89,8 @@ def cli(ctx, docker_host, verbose, yes):
 
 @cli.command(
     "remove-untagged",
-    help="Removes all containers that are not running and are based on an "
-    "untagged image, then removes all untagged images. Images with "
-    "tagged children are also considered tagged.")
+    help="Removes all untagged images that are not dependencies of tagged "
+    "images")
 @click.option('--force', '-f', is_flag=True)
 @click.pass_obj
 def remove_untagged(app, force):
@@ -119,9 +125,11 @@ def remove_untagged(app, force):
                          reverse=True))
 
     for img in sorted(tagged):
-        app.info('skip: {}'.format(fmt_image(all_images[img])))
+        app.info('tagged: {}'.format(fmt_image(all_images[img])))
 
-    app.confirm_or_exit('Prune untagged images?')
+    app.confirm_or_exit('Remove {} untagged images, keeping {} tagged or '
+                        'intermediate images?'.format(
+                            len(untagged), len(all_images) - len(untagged)))
 
     with click.progressbar(untagged,
                            label='Removing images',
@@ -129,6 +137,39 @@ def remove_untagged(app, force):
         for id in bar:
             # use noprune, because we will remove parents anyway later on
             app.cl.remove_image(id, noprune=True, force=force)
+
+
+@cli.command(
+    "remove-stopped",
+    help="Removes all containers that are not running and are based on an "
+    "untagged image, then removes all untagged images. Images with "
+    "tagged children are also considered tagged.")
+@click.pass_obj
+def remove_stopped(app):
+    # next, gather stopped containers based on untagged images
+    all_containers = {cnr['Id']: cnr for cnr in app.cl.containers(all=True)}
+
+    stopped = []
+    for id, cnr in all_containers.items():
+        if cnr['Status'] and not cnr['Status'].startswith('Exited'):
+            app.info('running: {}'.format(fmt_container(cnr)))
+            continue  # container is not stopped
+
+        stopped.append(id)
+
+    for ctn in stopped:
+        app.info(fmt_container(all_containers[ctn]))
+
+    app.confirm_or_exit(
+        'Remove {} stopped containers, keeping {} running container?'.format(
+            len(stopped), len(all_containers) - len(stopped)))
+
+    with click.progressbar(stopped,
+                           label='Removing containers',
+                           show_pos=True) as bar:
+        for id in bar:
+            # use noprune, because we will remove parents anyway later on
+            app.cl.remove_container(id, v=True)
 
 
 if __name__ == '__main__':
