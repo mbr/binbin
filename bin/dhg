@@ -172,5 +172,12 @@ def remove_stopped(app):
             app.cl.remove_container(id, v=True)
 
 
+@cli.command('export', help='Exports a volume, an image or a container', )
+@click.argument('id_or_name')
+@click.pass_obj
+def export(app):
+    pass
+
+
 if __name__ == '__main__':
     cli()
