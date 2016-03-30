@@ -35,7 +35,7 @@ def fmt_image(repo):
 
 
 def fmt_image_short(repo):
-    return repo['Id'][:7]
+    return repo['Id'][:12]
 
 
 class AppState(object):
@@ -80,53 +80,55 @@ def cli(ctx, docker_host, verbose, yes):
     ctx.obj.yes = yes
 
 
-@cli.command()
+@cli.command(
+    "remove-untagged",
+    help="Removes all containers that are not running and are based on an "
+    "untagged image, then removes all untagged images. Images with "
+    "tagged children are also considered tagged.")
+@click.option('--force', '-f', is_flag=True)
 @click.pass_obj
-def prune(app):
-    all_images = {img['Id']: img for img in app.cl.images(all=True)}
-
-    to_remove = []
-
-    for id, img in all_images.items():
-        if img['RepoTags'] == ['<none>:<none>']:
-            to_remove.append(id)
-            continue
-
-        app.info('skip: {}'.format(fmt_image(img)))
-
+def remove_untagged(app, force):
     def parent_depth(img):
         if not img.get('ParentId', None):
             return 0
 
         return 1 + parent_depth(all_images[img['ParentId']])
 
-    # sort images by tree depth, remove leaves first
-    to_remove.sort(key=lambda id: (parent_depth(all_images[id]), id),
-                   reverse=True)
+    all_images = {img['Id']: img for img in app.cl.images(all=True)}
 
-    for id in to_remove:
-        click.echo(fmt_image(all_images[id]))
+    tagged = set()
 
-    # get all
+    for id, img in all_images.items():
+        if img['RepoTags'] != ['<none>:<none>']:
+            tagged.add(id)
+
+            # image itself is tagged, add all parents as tagged as well
+            parent_id = img['ParentId']
+
+            while parent_id:
+                tagged.add(parent_id)
+                img = all_images[parent_id]
+                parent_id = img['ParentId']
+
+    untagged = list(sorted(
+        set(all_images.keys()) - tagged,
+        key=lambda id: parent_depth(all_images[id]),
+        reverse=True))
+    tagged = list(sorted(tagged,
+                         key=lambda id: parent_depth(all_images[id]),
+                         reverse=True))
+
+    for img in sorted(tagged):
+        app.info('skip: {}'.format(fmt_image(all_images[img])))
+
     app.confirm_or_exit('Prune untagged images?')
 
-    errors = []
-
-    with click.progressbar(to_remove,
+    with click.progressbar(untagged,
                            label='Removing images',
                            show_pos=True) as bar:
         for id in bar:
-            try:
-                # use noprune, because we will remove parents anyway later on
-                app.cl.remove_image(id, noprune=True)
-            except APIError as e:
-                errors.append((id, e))
-
-    if errors:
-        click.echo('Could not remove all untagged images:', err=True)
-
-        for id, err in errors:
-            click.echo('{}: {}'.format(id, err), err=True)
+            # use noprune, because we will remove parents anyway later on
+            app.cl.remove_image(id, noprune=True, force=force)
 
 
 if __name__ == '__main__':
