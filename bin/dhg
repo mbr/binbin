@@ -88,9 +88,9 @@ def cli(ctx, docker_host, verbose, yes):
 
 
 @cli.command(
-    "remove-untagged",
-    help="Removes all untagged images that are not dependencies of tagged "
-    "images")
+    'remove-untagged',
+    help='Removes all untagged images that are not dependencies of tagged '
+    'images')
 @click.option('--force', '-f', is_flag=True)
 @click.pass_obj
 def remove_untagged(app, force):
@@ -140,10 +140,10 @@ def remove_untagged(app, force):
 
 
 @cli.command(
-    "remove-stopped",
-    help="Removes all containers that are not running and are based on an "
-    "untagged image, then removes all untagged images. Images with "
-    "tagged children are also considered tagged.")
+    'remove-stopped',
+    help='Removes all containers that are not running and are based on an '
+    'untagged image, then removes all untagged images. Images with '
+    'tagged children are also considered tagged.')
 @click.pass_obj
 def remove_stopped(app):
     # next, gather stopped containers based on untagged images
