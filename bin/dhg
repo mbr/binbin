@@ -74,6 +74,26 @@ class AppState(object):
 
         return True
 
+    def exit_err(self, msg):
+        click.echo(msg, err=True)
+        sys.exit(1)
+
+    def get_single_ident(self, ident):
+        m = self.docker.find_by_ident(ident)
+
+        if len(m) == 0:
+            self.exit_err(
+                'No container, image or volume found matching {}'.format(
+                    ident))
+
+        if len(m) >= 2:
+            for item in m:
+                self.info(repr(item))
+            self.exit_err('Multiple({}) matches for ident {!r}'.format(
+                len(m), ident))
+
+        return m[0]
+
 
 def convert_dict(data, arrow_fields=[]):
     rv = {}
@@ -219,6 +239,9 @@ class DockerHost(object):
 
         # look inside containers for volumes
         for container in self.containers.values():
+            if not container.volumes:
+                continue
+
             for path, host_path in container.volumes.items():
                 vol_id = os.path.split(host_path)[-1]
 
@@ -246,16 +269,12 @@ def cli(ctx, docker_host, verbose, yes):
         info = partial(click.echo, err=True)
         info('Docker host: {}'.format(docker_host))
 
-    def exit_err(msg):
-        click.echo(msg, err=True)
-        sys.exit(1)
-
     cl = Client(base_url=docker_host)
     ctx.obj = AppState()
     ctx.obj.cl = cl
+    ctx.obj.docker = DockerHost(cl)
     ctx.obj.info = info
     ctx.obj.yes = yes
-    ctx.obj.exit_err = exit_err
 
 
 @cli.command(
@@ -351,23 +370,39 @@ def remove_stopped(app):
               default=sys.stdout.buffer)
 @click.pass_obj
 def export(app, ident, output):
-    docker = DockerHost(app.cl)
+    target = app.get_single_ident(ident)
 
-    m = docker.find_by_ident(ident)
-
-    if len(m) == 0:
-        app.exit_err('No container, image or volume found matching {}'.format(
-            ident))
-
-    if len(m) >= 2:
-        for item in m:
-            app.info(repr(item))
-        app.exit_err('Multiple({}) matches for ident {!r}'.format(
-            len(m), ident))
-
-    target = m[0]
     app.info('Exporting {} to {}'.format(target, output.name))
-    target.export_to(docker, output)
+    target.export_to(app.cl, output)
+
+
+@cli.command('import-volume',
+             help='Imports archived data from a volume '
+             'archive')
+@click.argument('ident')
+@click.argument('volume-archive', type=click.File(mode='rb'))
+@click.option('--destination', '-d', help='Destination inside container')
+@click.pass_obj
+def import_volumne(app, ident, destination, volume_archive):
+    target = app.get_single_ident(ident)
+
+    if not isinstance(target, Container):
+        app.exit_err('{} is not a container'.format(target))
+
+    if not destination:
+        if not target.volumes:
+            app.exit_err('{} has no volumes and no destination given'.format(
+                target))
+
+        if len(target.volumes) > 1:
+            app.exit_err('{} has multiple volumes, please specify '
+                         '--destination.'.format(target))
+
+        # use first mountpoint dirname
+        destination = '/'.join(list(target.volumes.keys())[0].split('/')[:-1])
+
+    app.info('Importing {} into {}{}'.format(volume_archive.name, target,
+                                             destination))
 
 
 if __name__ == '__main__':
