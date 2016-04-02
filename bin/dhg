@@ -23,6 +23,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 from functools import partial
+import os
 import re
 import sys
 
@@ -124,6 +125,15 @@ class Image(object):
         return 'Image({})'.format(self.id[:7])
 
 
+class Volume(object):
+    def __init__(self, image, path):
+        self.image = image
+        self.path = path
+
+    def __repr__(self):
+        return 'Volume({} on {!r})'.format(self.path, self.image)
+
+
 class DockerHost(object):
     def __init__(self, client):
         self.client = client
@@ -184,7 +194,14 @@ class DockerHost(object):
                           for id, im in self.images.items()
                           if id.startswith(ident))
 
-        # try containers first
+        # look inside containers for volumes
+        for container in self.containers.values():
+            for path, host_path in container.volumes.items():
+                vol_id = os.path.split(host_path)[-1]
+
+                if vol_id.startswith(ident):
+                    candidates.append(Volume(container, path))
+
         return candidates
 
 
@@ -304,7 +321,8 @@ def remove_stopped(app):
 def export(app, ident):
     docker = DockerHost(app.cl)
 
-    click.echo(repr(docker.find_by_ident(ident)))
+    m = docker.find_by_ident(ident)
+    click.echo(repr(m))
 
 
 if __name__ == '__main__':
