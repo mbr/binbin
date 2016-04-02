@@ -23,10 +23,19 @@
 # DEALINGS IN THE SOFTWARE.
 
 from functools import partial
+import re
 import sys
 
+import arrow
 import click
 from docker import Client
+
+
+# from http://stackoverflow.com/questions/1175208/elegant-python-function-
+#      to-convert-camelcase-to-snake-case
+def case_convert(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 def fmt_image(repo):
@@ -60,6 +69,123 @@ class AppState(object):
             raise RuntimeError('Unreachable')
 
         return True
+
+
+def convert_dict(data, arrow_fields=[]):
+    rv = {}
+
+    for key, val in data.items():
+        rv[case_convert(key)] = arrow.get(val) if key in arrow_fields else val
+
+    return rv
+
+
+def convert_list(items, arrow_fields=[]):
+    return [convert_dict(item, arrow_fields) for item in items]
+
+
+def convert_attr(obj, *args, **kwargs):
+    for key, val in convert_dict(*args, **kwargs).items():
+        setattr(obj, key, val)
+
+
+class Container(object):
+    def __init__(self, data, inspect_data=None):
+        self.ports = convert_list(data.pop('Ports'))
+
+        convert_attr(self, data)
+
+        if inspect_data:
+            self.state = convert_dict(
+                inspect_data.pop('State'),
+                arrow_fields=['StartedId', 'FinishedAt'])
+            self.network_settings = convert_dict(inspect_data.pop(
+                'NetworkSettings'))
+            self.config = convert_dict(inspect_data.pop('Config'))
+            self.host_config = convert_dict(inspect_data.pop('HostConfig'))
+            convert_attr(self, inspect_data)
+
+        self.cname = self.name.lstrip('/')
+
+    def __repr__(self):
+        return 'Container({})'.format(self.id[:7])
+
+
+class Image(object):
+    def __init__(self, data, inspect_data=None):
+        convert_attr(self, data)
+
+        if inspect_data:
+            self.container_config = convert_dict(inspect_data.pop(
+                'ContainerConfig'))
+            convert_attr(self, inspect_data, arrow_fields=['Created'])
+
+    def __repr__(self):
+        return 'Image({})'.format(self.id[:7])
+
+
+class DockerHost(object):
+    def __init__(self, client):
+        self.client = client
+        self.refresh()
+
+    def refresh(self):
+        self.containers = {}
+        for data in self.client.containers():
+            self.containers[data['Id']] = Container(
+                data, self.client.inspect_container(data['Id']))
+
+        self.images = {}
+        for data in self.client.images():
+            self.images[data['Id']] = Image(
+                data, self.client.inspect_image(data['Id']))
+
+    def get_container_by_name(self, name):
+        for container in self.containers.values():
+            if container.cname == name:
+                return container
+
+    def find_images_by_tags(self, repo=None, tag=None):
+        rv = []
+        for image in self.images.values():
+            for rt in image.repo_tags:
+                r, t = rt.split(':', 1)
+                if (repo is None or r == repo) and (tag is None or t == tag):
+                    rv.append(image)
+                    break
+        return rv
+
+    def find_by_ident(self, ident):
+        # try precise matches by id first
+        if ident in self.containers:
+            return [self.containers[ident]]
+
+        if ident in self.images:
+            return [self.images[ident]]
+
+        # exact matches by name
+        m = self.get_container_by_name(ident)
+        if m:
+            return [m]
+
+        candidates = []
+
+        if ':' in ident:
+            repo, tag = ident.split(':', 1)
+            return self.find_images_by_tags(repo, tag)
+
+        # container ids
+        candidates.extend(c
+                          for id, c in self.containers.items()
+                          if id.startswith(ident))
+
+        # image ids
+        candidates.extend(im
+                          for id, im in self.images.items()
+                          if id.startswith(ident))
+
+        # try containers first
+        return candidates
 
 
 @click.group()
@@ -173,10 +299,12 @@ def remove_stopped(app):
 
 
 @cli.command('export', help='Exports a volume, an image or a container', )
-@click.argument('id_or_name')
+@click.argument('ident')
 @click.pass_obj
-def export(app):
-    pass
+def export(app, ident):
+    docker = DockerHost(app.cl)
+
+    click.echo(repr(docker.find_by_ident(ident)))
 
 
 if __name__ == '__main__':
