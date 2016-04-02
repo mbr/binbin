@@ -22,10 +22,13 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+from contextlib import contextmanager
 from functools import partial
 import os
 import re
+import shutil
 import sys
+from uuid import uuid4
 
 import arrow
 import click
@@ -92,9 +95,9 @@ def convert_attr(obj, *args, **kwargs):
 
 class Container(object):
     def __init__(self, data, inspect_data=None):
-        self.ports = convert_list(data.pop('Ports'))
-
-        convert_attr(self, data)
+        if data:
+            self.ports = convert_list(data.pop('Ports'))
+            convert_attr(self, data)
 
         if inspect_data:
             self.state = convert_dict(
@@ -126,12 +129,25 @@ class Image(object):
 
 
 class Volume(object):
-    def __init__(self, image, path):
-        self.image = image
+    def __init__(self, container, path):
+        self.container = container
         self.path = path
 
+    def export_to(self, docker, dest, export_using='busybox'):
+        with docker.tmp_container(image=export_using,
+                                  detach=False,
+                                  stdin_open=False,
+                                  tty=False) as ec:
+            docker.client.start(ec, volumes_from=self.container.id)
+            # better would be to use get_archive, but that one is not
+            # available on earlier API versions
+            resp = docker.client.copy(ec, self.path)
+            assert resp.status == 200
+
+            shutil.copyfileobj(resp, dest)
+
     def __repr__(self):
-        return 'Volume({} on {!r})'.format(self.path, self.image)
+        return 'Volume({} on {!r})'.format(self.path, self.container)
 
 
 class DockerHost(object):
@@ -139,9 +155,16 @@ class DockerHost(object):
         self.client = client
         self.refresh()
 
+    @contextmanager
+    def tmp_container(self, name=None, *args, **kwargs):
+        if name is None:
+            name = 'dhg-temporary-container-{}'.format(uuid4())
+        yield self.client.create_container(name=name, *args, **kwargs)['Id']
+        self.client.remove_container(name, v=False, force=True)
+
     def refresh(self):
         self.containers = {}
-        for data in self.client.containers():
+        for data in self.client.containers(all=True):
             self.containers[data['Id']] = Container(
                 data, self.client.inspect_container(data['Id']))
 
@@ -322,8 +345,12 @@ def remove_stopped(app):
 
 @cli.command('export', help='Exports a volume, an image or a container', )
 @click.argument('ident')
+@click.option('--output',
+              '-o',
+              type=click.File(mode='wb'),
+              default=sys.stdout.buffer)
 @click.pass_obj
-def export(app, ident):
+def export(app, ident, output):
     docker = DockerHost(app.cl)
 
     m = docker.find_by_ident(ident)
@@ -338,7 +365,9 @@ def export(app, ident):
         app.exit_err('Multiple({}) matches for ident {!r}'.format(
             len(m), ident))
 
-    click.echo(repr(m))
+    target = m[0]
+    app.info('Exporting {} to {}'.format(target, output.name))
+    target.export_to(docker, output)
 
 
 if __name__ == '__main__':
