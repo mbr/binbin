@@ -66,7 +66,7 @@ class AppState(object):
 
     def confirm_or_exit(self, *args, **kwargs):
         if not self.confirm(*args, **kwargs):
-            sys.exit(1)
+            sys.exit(2)
             raise RuntimeError('Unreachable')
 
         return True
@@ -223,11 +223,16 @@ def cli(ctx, docker_host, verbose, yes):
         info = partial(click.echo, err=True)
         info('Docker host: {}'.format(docker_host))
 
+    def exit_err(msg):
+        click.echo(msg, err=True)
+        sys.exit(1)
+
     cl = Client(base_url=docker_host)
     ctx.obj = AppState()
     ctx.obj.cl = cl
     ctx.obj.info = info
     ctx.obj.yes = yes
+    ctx.obj.exit_err = exit_err
 
 
 @cli.command(
@@ -322,6 +327,17 @@ def export(app, ident):
     docker = DockerHost(app.cl)
 
     m = docker.find_by_ident(ident)
+
+    if len(m) == 0:
+        app.exit_err('No container, image or volume found matching {}'.format(
+            ident))
+
+    if len(m) >= 2:
+        for item in m:
+            app.info(repr(item))
+        app.exit_err('Multiple({}) matches for ident {!r}'.format(
+            len(m), ident))
+
     click.echo(repr(m))
 
 
