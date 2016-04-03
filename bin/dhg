@@ -27,6 +27,7 @@ from functools import partial
 import os
 import re
 import shutil
+import subprocess
 import sys
 from uuid import uuid4
 
@@ -166,6 +167,32 @@ class Volume(object):
 
             shutil.copyfileobj(resp, dest)
 
+    def import_from(self, src, verbose=False, import_using='busybox'):
+        # unfortunately, the docker-py library is *severely* lacking
+        # there seems to be no clean way to upload any data into a container
+        # (and in doing so, into a volume) on the jessie non-backported docker
+        # version
+
+        # this leaves only calling out to the docker binary as an alternative:
+
+        args = [
+            'docker',
+            'run',
+            '--volumes-from=' + self.container.id,
+            '--rm',
+            '-i',
+            import_using,
+            '/bin/tar',
+            '-xf-',
+        ]
+
+        if verbose:
+            args.append('-v')
+
+        args.extend(('-C', self.path))
+
+        subprocess.check_call(args, stdin=src)
+
     def __repr__(self):
         return 'Volume({} on {!r})'.format(self.path, self.container)
 
@@ -275,6 +302,7 @@ def cli(ctx, docker_host, verbose, yes):
     ctx.obj.docker = DockerHost(cl)
     ctx.obj.info = info
     ctx.obj.yes = yes
+    ctx.obj.verbose = verbose
 
 
 @cli.command(
@@ -403,6 +431,10 @@ def import_volumne(app, ident, destination, volume_archive):
 
     app.info('Importing {} into {}{}'.format(volume_archive.name, target,
                                              destination))
+
+    # construct volume
+    vol = Volume(target, destination)
+    vol.import_from(volume_archive, verbose=app.verbose)
 
 
 if __name__ == '__main__':
