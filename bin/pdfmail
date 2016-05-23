@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/python3
 
 # Copyright (c) 2016 Marc Brinkmann
 
@@ -22,52 +22,67 @@
 
 # pdfmail: Downsamples a PDF to make it suitable for sending via email
 
-set -e
+import os
+import subprocess
 
-if [ $# -ne 2 ]; then
-  echo "usage: $(basename $0) INPUT_PDF OUTPUT_PDF"
-  exit 1
-fi;
-
-INPUT=$1
-OUTPUT=$2
-
-# agressive settings. should be configurable. defaults are 72, 75
-DPI=36
-JPEG_QUALITY=65
-
-# optional: convert images to grayscale
-#
-#   grayscale:
-#   -sProcessColorModel=DeviceGray \
-#   -sColorConversionStrategy=Gray \
-#   -dOverrideICC \
-
-# alternative: black/white
-#
-#  -sDEVICE=psmono
-#
-# should be considered: -dCompatibilityLevel=1.4
-
-gs \
-  -o "${OUTPUT}" \
-  -sDEVICE=pdfwrite \
-  -dDownsampleColorImages=true \
-  -dDownsampleGrayImages=true \
-  -dDownsampleMonoImages=true \
-  -dColorImageResolution=${DPI} \
-  -dGrayImageResolution=${DPI} \
-  -dMonoImageResolution=${DPI} \
-  -dJPEGQ=${JPEG_QUALITY} \
-  -dColorImageDownsampleThreshold=1.0 \
-  -dGrayImageDownsampleThreshold=1.0 \
-  -dMonoImageDownsampleThreshold=1.0 \
-  -sProcessColorModel=DeviceGray \
-  -sColorConversionStrategy=Gray \
-  -dOverrideICC \
-  -r${DPI}\
-  "${INPUT}"
-  du -h "${INPUT}" "${OUTPUT}"
+import click
 
 
-echo "INPUT -> OUTPUT"
+@click.command()
+@click.option('-o',
+              '--output',
+              type=click.Path(dir_okay=False,
+                              writable=True),
+              help='Output filename [default: INPUT-lowres.pdf',
+              default=None)
+@click.option('--gs', default='gs', help='Name of ghostscript binary')
+@click.option('-r',
+              '--resolution',
+              default=72,
+              help='Resolution in dpi to downsample to')
+@click.option('-j', '--jpeg-quality', default=75, help='JPEG quality setting')
+@click.option('-g',
+              '--grayscale',
+              default=False,
+              is_flag=True,
+              help='Convert to grayscale')
+@click.argument('input')
+def pdfmail(output, input, gs, resolution, jpeg_quality, grayscale):
+    if not output:
+        base, ext = os.path.splitext(input)
+        output = base + '-lowres' + ext
+
+    cmd = [gs,
+           '-o',
+           output,
+           '-sDEVICE=pdfwrite',
+           '-dDownsampleColorImages=true',
+           '-dDownsampleGrayImages=true',
+           '-dDownsampleMonoImages=true',
+           '-dColorImageResolution={}'.format(resolution),
+           '-dGrayImageResolution={}'.format(resolution),
+           '-dMonoImageResolution={}'.format(resolution),
+           '-dColorImageDownsampleThreshold=1.0',
+           '-dGrayImageDownsampleThreshold=1.0',
+           '-dMonoImageDownsampleThreshold=1.0',
+           '-dJPEGQ={}'.format(jpeg_quality),
+           '-dCompatibilityLevel=1.4',
+           '-r{}'.format(resolution), ]
+
+    if grayscale:
+        cmd.extend(['-sProcessColorModel=DeviceGray',
+                    '-sColorConversionStrategy=Gray',
+                    '-dOverrideICC', ])
+
+    cmd.append(input)
+    size_before = os.stat(input).st_size
+    subprocess.check_call(cmd)
+    size_after = os.stat(output).st_size
+
+    click.echo('{}: {}K -> {}K'.format(output,
+                                       size_before // 1024,
+                                       size_after // 1024, ))
+
+
+if __name__ == '__main__':
+    pdfmail()
