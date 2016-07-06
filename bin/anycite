@@ -22,10 +22,16 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+from datetime import datetime
+import re
 import sys
 
 import click
 import requests
+
+
+class CannotHandle(Exception):
+    pass
 
 
 class Handler(object):
@@ -64,7 +70,95 @@ class ISBNHandler(Handler):
         return resp.text
 
 
-HANDLERS = [ISBNHandler]
+class GitHubHandler(Handler):
+    REPO_RE = re.compile(
+        r'https://github.com/([^/]+)/([^/]+)(?:/commit/([^/]+))?')
+    API_BASE = 'https://api.github.com'
+    SAFE_RE = re.compile('[^a-zA-Z0-9]')
+
+    @classmethod
+    def can_handle(cls, arg):
+        return arg.startswith('https://github.com')
+
+    @classmethod
+    def handle(cls, arg):
+        m = cls.REPO_RE.match(arg)
+
+        if not m:
+            raise CannotHandle('failed to parse GitHub URL: {}'.format(arg))
+
+        user, repo, commit_id = m.groups()
+
+        # fetch repo first
+        resp = requests.get(cls.API_BASE + '/repos/{}/{}'.format(user, repo))
+        resp.raise_for_status()
+        repo = resp.json()
+
+        # then owner
+        resp = requests.get(cls.API_BASE + '/users/{}'.format(repo['owner'][
+            'login']))
+        resp.raise_for_status()
+        owner = resp.json()
+
+        # then commit
+        if not commit_id:
+            commit_id = 'master'
+
+        resp = requests.get(cls.API_BASE +
+                            '/repos/{}/{}/git/commits/{}'.format(user, repo[
+                                'name'], commit_id))
+
+        resp.raise_for_status()
+        commit = resp.json()
+
+        from pprint import pprint
+        pprint(repo)
+        pprint(owner)
+        pprint(commit)
+
+        DT_FMT = "%Y-%m-%dT%H:%M:%SZ"
+
+        created_date = datetime.strptime(repo['created_at'], DT_FMT)
+        commit_date = datetime.strptime(commit['author']['date'], DT_FMT)
+
+        # format based on http://academia.stackexchange.com/questions/14010/
+        #                        how-do-you-cite-a-github-repository
+        return format_bibtex(
+            entry_type='online',
+            bibtex_key='{}{:02d}'.format(
+                cls.SAFE_RE.sub('', repo['name']), created_date.year % 100),
+            Author=owner['name'],
+            Url=repo['html_url'],
+            Title=repo['description'],
+            Publisher='GitHub',
+            Journal='GitHub repository',
+            Commit=commit['sha'],
+            Date='{:04d}-{:02d}-{:02d}'.format(
+                commit_date.year, commit_date.month, commit_date.day))
+
+
+def format_bibtex(**kwargs):
+    # FIXME: should be moved to latex package
+    entry_type = kwargs.pop('entry_type')
+    entry_type = entry_type[0].upper() + entry_type[1:].lower()
+
+    key = kwargs.pop('bibtex_key')
+
+    buf = '{{@{}{}{{\n'.format(entry_type, key)
+    lines = []
+    for k, v in sorted(kwargs.items()):
+        # FIXME: do proper escaping
+        assert '{' not in k
+        assert '}' not in k
+        assert '{' not in v
+        assert '}' not in v
+        lines.append('  {} = {{{}}}'.format(k, v))
+    buf += ',\n'.join(lines)
+    buf += '\n}\n'
+    return buf
+
+
+HANDLERS = [ISBNHandler, GitHubHandler]
 
 
 @click.command()
@@ -72,10 +166,14 @@ HANDLERS = [ISBNHandler]
 def anycite(location):
     for handler in HANDLERS:
         if handler.can_handle(location):
-            result = handler.handle(location)
+            try:
+                result = handler.handle(location)
+            except CannotHandle as e:
+                click.echo('warning: {}'.format(e, err=1))
+                continue
             break
     else:
-        click.echo("No handler for location: {}".format(location))
+        click.echo('No handler for location: {}'.format(location, err=1))
         sys.exit(1)
 
     click.echo(result)
