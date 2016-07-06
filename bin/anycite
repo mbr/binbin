@@ -48,7 +48,8 @@ class ISBNHandler(Handler):
     # uses Manas Tungare's ISBN-to-BibTeX converter
     # http://manas.tungare.name/software/isbn-to-bibtex/
     #
-    # should probably create our own implementation here at some point
+    # should probably create our own implementation here at some point, using
+    # isbn_tools
 
     LOOKUP_URL = 'http://php.chimbori.com/_php/isbn/isbn-bibtex'
 
@@ -67,7 +68,12 @@ class ISBNHandler(Handler):
         resp = requests.post(cls.LOOKUP_URL, data={'isbn': arg})
         resp.raise_for_status()
 
-        return resp.text
+        # we need to remove the URL, since it is just an amazon affiliate link
+        # FIXME: this results in a "trailing" comma if URL is the last field
+        #        of the result
+        return '\n'.join(line
+                         for line in resp.text.splitlines()
+                         if not line.lstrip().startswith('URL')) + '\n'
 
 
 class GitHubHandler(Handler):
