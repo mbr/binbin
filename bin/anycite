@@ -144,7 +144,7 @@ def format_bibtex(**kwargs):
 
     key = kwargs.pop('bibtex_key')
 
-    buf = '{{@{}{}{{\n'.format(entry_type, key)
+    buf = '@{}{{{},\n'.format(entry_type, key)
     lines = []
     for k, v in sorted(kwargs.items()):
         # FIXME: do proper escaping
