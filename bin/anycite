@@ -29,9 +29,12 @@ import sys
 import click
 import requests
 
+VERBOSE = False
+
 
 def get(url, *args, **kwargs):
-    click.echo(url, err=True)
+    if VERBOSE:
+        click.echo(url, err=True)
     resp = requests.get(url, *args, **kwargs)
     resp.raise_for_status()
     return resp
@@ -121,10 +124,11 @@ class GitHubHandler(Handler):
             user, repo['name'], commit_id))
         commit = resp.json()
 
-        from pprint import pprint
-        pprint(repo)
-        pprint(owner)
-        pprint(commit)
+        if VERBOSE:
+            from pprint import pprint
+            pprint(repo)
+            pprint(owner)
+            pprint(commit)
 
         DT_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -173,7 +177,11 @@ HANDLERS = [ISBNHandler, GitHubHandler]
 
 @click.command()
 @click.argument('location')
-def anycite(location):
+@click.option('-v', '--verbose', is_flag=True)
+def anycite(location, verbose):
+    global VERBOSE
+    VERBOSE = verbose
+
     for handler in HANDLERS:
         if handler.can_handle(location):
             try:
