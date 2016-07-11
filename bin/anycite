@@ -112,7 +112,10 @@ class GitHubHandler(Handler):
 
         # then commit
         if not commit_id:
-            commit_id = 'master'
+            resp = get(cls.API_BASE + '/repos/{}/{}/branches/{}'.format(
+                user, repo['name'], 'master'))
+            branch = resp.json()
+            commit_id = branch['commit']['sha']
 
         resp = get(cls.API_BASE + '/repos/{}/{}/git/commits/{}'.format(
             user, repo['name'], commit_id))
