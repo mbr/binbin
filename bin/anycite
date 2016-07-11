@@ -30,6 +30,13 @@ import click
 import requests
 
 
+def get(url, *args, **kwargs):
+    click.echo(url, err=True)
+    resp = requests.get(url, *args, **kwargs)
+    resp.raise_for_status()
+    return resp
+
+
 class CannotHandle(Exception):
     pass
 
@@ -96,25 +103,19 @@ class GitHubHandler(Handler):
         user, repo, commit_id = m.groups()
 
         # fetch repo first
-        resp = requests.get(cls.API_BASE + '/repos/{}/{}'.format(user, repo))
-        resp.raise_for_status()
+        resp = get(cls.API_BASE + '/repos/{}/{}'.format(user, repo))
         repo = resp.json()
 
         # then owner
-        resp = requests.get(cls.API_BASE + '/users/{}'.format(repo['owner'][
-            'login']))
-        resp.raise_for_status()
+        resp = get(cls.API_BASE + '/users/{}'.format(repo['owner']['login']))
         owner = resp.json()
 
         # then commit
         if not commit_id:
             commit_id = 'master'
 
-        resp = requests.get(cls.API_BASE +
-                            '/repos/{}/{}/git/commits/{}'.format(user, repo[
-                                'name'], commit_id))
-
-        resp.raise_for_status()
+        resp = get(cls.API_BASE + '/repos/{}/{}/git/commits/{}'.format(
+            user, repo['name'], commit_id))
         commit = resp.json()
 
         from pprint import pprint
