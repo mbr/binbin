@@ -23,6 +23,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 from datetime import datetime
+import html.parser
 import re
 import sys
 
@@ -30,6 +31,7 @@ import click
 import requests
 
 VERBOSE = False
+SAFE_RE = re.compile('[^a-zA-Z0-9]')
 
 
 def get(url, *args, **kwargs):
@@ -90,7 +92,6 @@ class GitHubHandler(Handler):
     REPO_RE = re.compile(
         r'https://github.com/([^/]+)/([^/]+)(?:/commit/([^/]+))?')
     API_BASE = 'https://api.github.com'
-    SAFE_RE = re.compile('[^a-zA-Z0-9]')
 
     @classmethod
     def can_handle(cls, arg):
@@ -140,7 +141,7 @@ class GitHubHandler(Handler):
         return format_bibtex(
             entry_type='online',
             bibtex_key='{}{:02d}'.format(
-                cls.SAFE_RE.sub('', repo['name']), created_date.year % 100),
+                SAFE_RE.sub('', repo['name']), created_date.year % 100),
             Author=owner['name'],
             Url=repo['html_url'],
             Title=repo['description'],
@@ -149,6 +150,72 @@ class GitHubHandler(Handler):
             Commit=commit['sha'],
             Date='{:04d}-{:02d}-{:02d}'.format(
                 commit_date.year, commit_date.month, commit_date.day))
+
+
+class URLHandler(Handler):
+    @classmethod
+    def can_handle(cls, arg):
+        return arg.startswith('http://') or arg.startswith('https://')
+
+    @classmethod
+    def handle(cls, arg):
+        resp = get(arg, headers={'Accept': 'text/html'})
+
+        class Parser(html.parser.HTMLParser):
+            def __init__(self, *args, **kwargs):
+                super(Parser, self).__init__(*args, **kwargs)
+                self.tag_stack = []
+
+            @property
+            def ctag(self):
+                if self.tag_stack:
+                    return self.tag_stack[-1][0].lower()
+
+            @property
+            def cattr(self):
+                if self.tag_stack:
+                    return self.tag_stack[-1][1]
+                return {}
+
+            def handle_starttag(self, tag, attr):
+                self.tag_stack.append((tag, attr))
+
+            def handle_endtag(self, tag):
+                if self.ctag == tag.lower():
+                    self.tag_stack.pop()
+
+            def handle_data(self, data):
+                f = getattr(self, 'on_{}_data'.format(self.ctag), None)
+                if f:
+                    f(data)
+
+        class CiteParser(Parser):
+            def __init__(self, *args, **kwargs):
+                self.title = 'UNTITLED'
+                self.author = 'UNKNOWN AUTHOR'
+                super(CiteParser, self).__init__(*args, **kwargs)
+
+            def on_a_data(self, data):
+                if self.cattr.get('rel') == 'author':
+                    self.author = data
+
+            def on_title_data(self, data):
+                self.title = data
+
+        p = CiteParser(strict=False, convert_charrefs=True)
+        p.feed(resp.text)
+
+        access_date = datetime.now()
+
+        return format_bibtex(
+            entry_type='online',
+            bibtex_key='{}{:02d}'.format(
+                SAFE_RE.sub('', arg[5:]), access_date.year % 100),
+            Author=p.author,
+            Url=arg,
+            Title=p.title,
+            UrlDate='{:04d}-{:02d}-{:02d}'.format(
+                access_date.year, access_date.month, access_date.day))
 
 
 def format_bibtex(**kwargs):
@@ -172,7 +239,7 @@ def format_bibtex(**kwargs):
     return buf
 
 
-HANDLERS = [ISBNHandler, GitHubHandler]
+HANDLERS = [ISBNHandler, GitHubHandler, URLHandler]
 
 
 @click.command()
