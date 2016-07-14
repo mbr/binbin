@@ -90,12 +90,12 @@ class ISBNHandler(Handler):
 
 class GitHubHandler(Handler):
     REPO_RE = re.compile(
-        r'https://github.com/([^/]+)/([^/]+)(?:/commit/([^/]+))?')
+        r'https://github.com/([^/]+)/([^/]+)(?:/commit/([^/]+))?$')
     API_BASE = 'https://api.github.com'
 
     @classmethod
     def can_handle(cls, arg):
-        return arg.startswith('https://github.com')
+        return bool(cls.REPO_RE.match(arg))
 
     @classmethod
     def handle(cls, arg):
@@ -174,7 +174,7 @@ class URLHandler(Handler):
             @property
             def cattr(self):
                 if self.tag_stack:
-                    return self.tag_stack[-1][1]
+                    return dict(self.tag_stack[-1][1])
                 return {}
 
             def handle_starttag(self, tag, attr):
