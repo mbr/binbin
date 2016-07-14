@@ -1,0 +1,142 @@
+#!/usr/bin/python3
+
+# ghdoc: A helper script to upload documentation to github pages. For now, only
+# Rust is supported.
+
+# Copyright (c) 2016 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+# NOTE: This should either be more flexible in what it does or be part of
+# unleash (https://github.com/mbr/unleash)
+
+import configparser
+import os
+import shutil
+import subprocess
+
+import click
+
+
+class LanguageHandler(object):
+    def __init__(self, root, branch_name, origin):
+        self.root = os.path.abspath(root)
+        self.branch_name = branch_name
+        self.origin = origin
+
+
+class RustHandler(LanguageHandler):
+    pass
+
+    def publish(self, all_packages, push):
+        # remove target dir, because sometimes things get wonky
+        target = os.path.join(self.root, 'target')
+        doc_dir = os.path.join(target, 'doc')
+
+        cargo_toml = os.path.join(self.root, 'Cargo.toml')
+
+        if not os.path.exists(cargo_toml):
+            raise ValueError('Cargo.toml not found in {}'.format(self.target))
+
+        # open Cargo.toml to read name. slightly dirty because we use
+        # configparser instead of a proper toml one
+        cfg = configparser.ConfigParser()
+        cfg.read(cargo_toml)
+
+        # yuck!
+        crate_name = cfg['package']['name'].strip('"')
+
+        if os.path.exists(target):
+            assert os.path.isdir(target)
+            click.echo("Removing {}".format(doc_dir))
+            shutil.rmtree(target)
+
+        doc_args = ['cargo', 'doc']
+
+        if not all_packages:
+            doc_args.extend(('-p', crate_name))
+
+        click.echo("Building docs")
+        subprocess.check_call(doc_args)
+
+        assert os.path.exists(os.path.join(doc_dir, crate_name))
+
+        click.echo('Creating gh-pages commit')
+        subprocess.check_call(['gittar', '-b', self.branch_name,
+                               'file:{}/*'.format(doc_dir)])
+
+        # TODO: check if documentation path is correct in cargo.toml
+
+        subprocess.check_call(['git',
+                               'push',
+                               self.origin,
+                               '{}:{}'.format(self.branch_name,
+                                              self.branch_name), ])
+
+
+@click.group(help='Publishes documentation to github pages')
+@click.option('-b',
+              '--branch',
+              'branch_name',
+              default='gh-pages',
+              help='Branch name (instead of "gh-pages")', )
+@click.option('-d',
+              '--dir',
+              'root',
+              type=click.Path(exists=True,
+                              file_okay=False,
+                              dir_okay=True,
+                              readable=True),
+              default='.',
+              help='Root directory of project', )
+@click.option('-l',
+              '--lang',
+              type=click.Choice(['rust']),
+              default='rust',
+              help='Language plugin to use', )
+@click.option('-o', '--origin', default='origin', help='Origin remote name')
+@click.pass_context
+def cli(ctx, lang, root, branch_name, origin):
+    kwargs = {'root': root, 'branch_name': branch_name, 'origin': origin}
+
+    if lang == 'rust':
+        handler = RustHandler(**kwargs)
+    else:
+        raise RuntimeError('Unknown language: {}'.format(lang))
+
+    ctx.obj = handler
+
+
+@cli.command()
+@click.option('-a',
+              '--all-packages',
+              help='Include dependency documentation',
+              is_flag=True,
+              default=False)
+@click.option('-p/-P',
+              '--push/--no-push',
+              default=True,
+              help='Push to origin (default: true)', )
+@click.pass_obj
+def publish(handler, all_packages, push):
+    handler.publish(all_packages=all_packages, push=push)
+
+
+if __name__ == '__main__':
+    cli()
