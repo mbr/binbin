@@ -68,7 +68,13 @@ def info(msg):
               is_flag=True,
               default=False,
               help='Clear screen and output banner before executing command')
-def cli(files, cmd, quiet, clear, clear_and_banner):
+@click.option('-R',
+              '--rerun-on-success',
+              type=float,
+              default=None,
+              help='Even if successful, rerun if execution took longer than '
+              'this many seconds')
+def cli(files, cmd, quiet, clear, clear_and_banner, rerun_on_success):
     global QUIET
     QUIET = quiet
 
@@ -114,22 +120,25 @@ def cli(files, cmd, quiet, clear, clear_and_banner):
         total_s = click.style('{:.4}s'.format(total),
                               fg='green' if p.returncode == 0 else 'red')
         status_s = click.style(
-            'ok',
-            fg='green') if p.returncode == 0 else click.style(
+            'ok', fg='green') if p.returncode == 0 else click.style(
                 'err({})'.format(p.returncode),
                 fg='red')
 
-        info(status_s + ', took {} seconds. waiting for changes...'.format(
-            total_s))
+        if rerun_on_success is not None and rerun_on_success <= total:
+            info(status_s + ', took {} seconds. Rerunning immediately.')
+        else:
+            info(status_s + ', took {} seconds. Waiting for changes...'.format(
+                total_s))
 
-        p = subprocess.Popen(
-            inotify_args,
-            stderr=None if not quiet else open('/dev/null', 'wb'),
-            stdout=None if not quiet else open('/dev/null', 'wb'))
-        p.wait()
+            p = subprocess.Popen(
+                inotify_args,
+                stderr=None if not quiet else open('/dev/null', 'wb'),
+                stdout=None if not quiet else open('/dev/null', 'wb'))
+            p.wait()
 
-        if p.returncode != 0:
-            exit_err('inotifywait failed: {}/{}'.format(p.stdout, p.stderr))
+            if p.returncode != 0:
+                exit_err('inotifywait failed: {}/{}'.format(p.stdout,
+                                                            p.stderr))
 
 
 if __name__ == '__main__':
