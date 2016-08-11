@@ -132,8 +132,8 @@ def cli(files, cmd, quiet, clear, clear_and_banner, rerun_on_success):
 
             p = subprocess.Popen(
                 inotify_args,
-                stderr=None if not quiet else open('/dev/null', 'wb'),
-                stdout=None if not quiet else open('/dev/null', 'wb'))
+                stderr=None if not quiet else subprocess.DEVNULL,
+                stdout=None if not quiet else subprocess.DEVNULL)
             p.wait()
 
             if p.returncode != 0:
