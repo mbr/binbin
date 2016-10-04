@@ -28,9 +28,14 @@ import click
 import subprocess
 
 
-@click.command(help='A git-integrated command that outputs for each '
-               'repository in a path whether or not it has unpushed '
-               'changes.')
+@click.group()
+def cli():
+    pass
+
+
+@cli.command(help='A git-integrated command that outputs for each '
+             'repository in a path whether or not it has unpushed '
+             'changes.')
 @click.argument('path',
                 default='.',
                 type=click.Path(file_okay=False,
@@ -49,7 +54,11 @@ import subprocess
               default=False,
               is_flag=True,
               help='Output unchanged repositories as well')
-def dlist(path, branch, remote, verbose):
+@click.option('-f/-F',
+              '--fetch/--no-fetch',
+              default=True,
+              help='Fetch each repo first')
+def status(path, branch, remote, verbose, fetch):
     for dirpath, dirnames, filenames in os.walk(path):
         if not dirpath.endswith('.git'):
             continue
@@ -60,6 +69,22 @@ def dlist(path, branch, remote, verbose):
         else:
             repo_path = dirpath
 
+        if fetch:
+            if verbose:
+                click.secho('Fetching {}'.format(repo_path), fg='yellow')
+
+        try:
+            stdout = subprocess.check_output(
+                ['git', 'fetch'],
+                cwd=repo_path,
+                stderr=subprocess.STDOUT).decode()
+        except subprocess.CalledProcessError:
+            click.secho(repo_path, fg='red')
+            if stdout:
+                click.echo('  {}'.format(stdout.splitlines()[0]))
+            continue
+
+        # check if we're behind
         try:
             stdout = subprocess.check_output(
                 ['git', 'log', '--pretty=oneline',
@@ -75,9 +100,8 @@ def dlist(path, branch, remote, verbose):
         commits = [line.split(' ', 1) for line in stdout.splitlines()]
 
         if not commits:
-            if not verbose:
-                continue
-            click.secho(repo_path, fg='green')
+            if verbose:
+                click.secho(repo_path, fg='green')
         else:
             click.echo('{}: {} behind'.format(
                 click.style(repo_path,
@@ -86,6 +110,32 @@ def dlist(path, branch, remote, verbose):
             for commit, msg in commits:
                 click.echo('    {} {}'.format(commit[:6], msg))
 
+        # check for cases where the remote is ahead of us
+        try:
+            stdout = subprocess.check_output(
+                ['git', 'log', '--pretty=oneline',
+                 'refs/heads/{}..{}/{}'.format(branch, remote, branch)],
+                cwd=repo_path,
+                stderr=subprocess.STDOUT).decode()
+        except subprocess.CalledProcessError:
+            click.secho(repo_path, fg='red')
+            if stdout:
+                click.echo('  {}'.format(stdout.splitlines()[0]))
+            continue
+
+        commits = [line.split(' ', 1) for line in stdout.splitlines()]
+
+        if not commits:
+            if verbose:
+                click.secho(repo_path, fg='green')
+        else:
+            click.echo('{}: {} ahead'.format(
+                click.style(repo_path,
+                            fg='blue'),
+                len(commits)))
+            for commit, msg in commits:
+                click.echo('    {} {}'.format(commit[:6], msg))
+
 
 if __name__ == '__main__':
-    dlist()
+    cli()
