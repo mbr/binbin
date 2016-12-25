@@ -56,7 +56,15 @@ def iter_entries(fobj):
         yield row[0], level, pg_num
 
 
-@click.group(help='hello')
+@click.group(help='Reads a specifically formatted .csv file and outputs a '
+             'a format suitable for inclusion into PDF metadata files '
+             'created by pdftk.\n\n'
+             'The format is tab-separated CSV, with double-quotes as '
+             'delimiters and a backslash for escapes. The first column is '
+             'the page number, followed by 0 or more empty cells to increase '
+             'the items level. The title follows afterwards:\n\n'
+             '    1\\tChapter A\\n\n'
+             '2\\t\\tSubchapter A1\\n\n')
 def cli():
     pass
 
