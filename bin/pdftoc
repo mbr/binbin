@@ -1,0 +1,74 @@
+#!/usr/bin/python3
+
+# pdftoc: Convert PDF table of contents
+
+# Copyright (c) 2016 Marc Brinkmann
+
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+import click
+import csv
+
+TPL = """BookmarkBegin
+BookmarkTitle: {title}
+BookmarkLevel: {level}
+BookmarkPageNumber: {page_number}
+"""
+
+
+class TocDialect(csv.Dialect):
+    delimiter = '\t'
+    quotechar = '"'
+    escapechar = '\\'
+    doublequote = False
+    skipinitialspace = True
+    lineterminator = '\n'
+    quoting = csv.QUOTE_MINIMAL
+
+
+def iter_entries(fobj):
+    for row in csv.reader(fobj, dialect=TocDialect):
+        pg_num = int(row.pop(0))
+        level = 0
+
+        while len(row) > 1:
+            assert '' == row.pop(0)
+            level += 1
+
+        assert '\n' not in row[0]
+
+        yield row[0], level, pg_num
+
+
+@click.group(help='hello')
+def cli():
+    pass
+
+
+@cli.command('print')
+@click.argument('tocfile', type=click.File(mode='r'))
+def print_(tocfile):
+    for title, level, page_number in iter_entries(tocfile):
+        print(TPL.format(title=title,
+                         level=level + 1,
+                         page_number=page_number))
+
+
+if __name__ == '__main__':
+    cli()
