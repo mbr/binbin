@@ -73,9 +73,11 @@ def cli():
 @click.argument('tocfile', type=click.File(mode='r'))
 def print_(tocfile):
     for title, level, page_number in iter_entries(tocfile):
-        print(TPL.format(title=title,
-                         level=level + 1,
-                         page_number=page_number))
+        click.echo(
+            TPL.format(title=title,
+                       level=level + 1,
+                       page_number=page_number),
+            nl=False)
 
 
 if __name__ == '__main__':
