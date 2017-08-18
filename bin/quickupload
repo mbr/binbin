@@ -28,8 +28,6 @@ FILENAME=
 TMPDIR=
 CONFFILE="${XDG_CONFIG_HOME:-${HOME}/.config}"/quickupload.conf
 
-. "${CONFFILE}"
-
 if [ ! -e "$CONFFILE" ]; then
   echo "configuration file ${CONFFILE} does not exist. Here's an example to get you started:"
   echo
@@ -39,6 +37,8 @@ if [ ! -e "$CONFFILE" ]; then
   echo 'BASE_URL=http://mydomain.com/files'
   exit 1;
 fi;
+
+. "${CONFFILE}"
 
 show_usage() {
   SCRIPT="$(basename $0)"
