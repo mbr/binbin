@@ -71,6 +71,7 @@ def status(path, branch, remote, verbose, fetch):
                 click.secho('Fetching {}'.format(repo_path), fg='yellow')
 
         try:
+            stdout = None
             stdout = subprocess.check_output(
                 ['git', 'fetch'], cwd=repo_path,
                 stderr=subprocess.STDOUT).decode()
