@@ -55,7 +55,12 @@ def cli():
     help='Output unchanged repositories as well')
 @click.option(
     '-f/-F', '--fetch/--no-fetch', default=True, help='Fetch each repo first')
-def status(path, branch, remote, verbose, fetch):
+@click.option(
+    '-t/-T',
+    '--trailing/--no-trailing',
+    default=True,
+    help='Show repositories that are behind remote')
+def status(path, branch, remote, verbose, fetch, trailing):
     for dirpath, dirnames, filenames in os.walk(path):
         if not dirpath.endswith('.git'):
             continue
@@ -127,7 +132,7 @@ def status(path, branch, remote, verbose, fetch):
         if not commits:
             if verbose:
                 click.secho(repo_path, fg='green')
-        else:
+        elif trailing:
             click.echo('{}: {} remote ahead'.format(
                 click.style(repo_path, fg='blue'), len(commits)))
             for commit, msg in commits:
