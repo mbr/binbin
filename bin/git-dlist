@@ -36,28 +36,25 @@ def cli():
 @cli.command(help='A git-integrated command that outputs for each '
              'repository in a path whether or not it has unpushed '
              'changes.')
-@click.argument('path',
-                default='.',
-                type=click.Path(file_okay=False,
-                                dir_okay=True,
-                                exists=True))
-@click.option('-b',
-              '--branch',
-              default='master',
-              help='The branch to check for non-uploadedness')
-@click.option('-r',
-              '--remote',
-              default='origin',
-              help='Remote to check against')
-@click.option('-v',
-              '--verbose',
-              default=False,
-              is_flag=True,
-              help='Output unchanged repositories as well')
-@click.option('-f/-F',
-              '--fetch/--no-fetch',
-              default=True,
-              help='Fetch each repo first')
+@click.argument(
+    'path',
+    default='.',
+    type=click.Path(file_okay=False, dir_okay=True, exists=True))
+@click.option(
+    '-b',
+    '--branch',
+    default='master',
+    help='The branch to check for non-uploadedness')
+@click.option(
+    '-r', '--remote', default='origin', help='Remote to check against')
+@click.option(
+    '-v',
+    '--verbose',
+    default=False,
+    is_flag=True,
+    help='Output unchanged repositories as well')
+@click.option(
+    '-f/-F', '--fetch/--no-fetch', default=True, help='Fetch each repo first')
 def status(path, branch, remote, verbose, fetch):
     for dirpath, dirnames, filenames in os.walk(path):
         if not dirpath.endswith('.git'):
@@ -75,8 +72,7 @@ def status(path, branch, remote, verbose, fetch):
 
         try:
             stdout = subprocess.check_output(
-                ['git', 'fetch'],
-                cwd=repo_path,
+                ['git', 'fetch'], cwd=repo_path,
                 stderr=subprocess.STDOUT).decode()
         except subprocess.CalledProcessError:
             click.secho(repo_path, fg='red')
@@ -87,8 +83,10 @@ def status(path, branch, remote, verbose, fetch):
         # check if we're behind
         try:
             stdout = subprocess.check_output(
-                ['git', 'log', '--pretty=oneline',
-                 '{}/{}..refs/heads/{}'.format(remote, branch, branch)],
+                [
+                    'git', 'log', '--pretty=oneline',
+                    '{}/{}..refs/heads/{}'.format(remote, branch, branch)
+                ],
                 cwd=repo_path,
                 stderr=subprocess.STDOUT).decode()
         except subprocess.CalledProcessError:
@@ -104,17 +102,17 @@ def status(path, branch, remote, verbose, fetch):
                 click.secho(repo_path, fg='green')
         else:
             click.echo('{}: {} behind'.format(
-                click.style(repo_path,
-                            fg='yellow'),
-                len(commits)))
+                click.style(repo_path, fg='yellow'), len(commits)))
             for commit, msg in commits:
                 click.echo('    {} {}'.format(commit[:6], msg))
 
         # check for cases where the remote is ahead of us
         try:
             stdout = subprocess.check_output(
-                ['git', 'log', '--pretty=oneline',
-                 'refs/heads/{}..{}/{}'.format(branch, remote, branch)],
+                [
+                    'git', 'log', '--pretty=oneline',
+                    'refs/heads/{}..{}/{}'.format(branch, remote, branch)
+                ],
                 cwd=repo_path,
                 stderr=subprocess.STDOUT).decode()
         except subprocess.CalledProcessError:
@@ -130,9 +128,7 @@ def status(path, branch, remote, verbose, fetch):
                 click.secho(repo_path, fg='green')
         else:
             click.echo('{}: {} ahead'.format(
-                click.style(repo_path,
-                            fg='blue'),
-                len(commits)))
+                click.style(repo_path, fg='blue'), len(commits)))
             for commit, msg in commits:
                 click.echo('    {} {}'.format(commit[:6], msg))
 
