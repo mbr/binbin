@@ -102,7 +102,7 @@ def status(path, branch, remote, verbose, fetch):
             if verbose:
                 click.secho(repo_path, fg='green')
         else:
-            click.echo('{}: {} behind'.format(
+            click.echo('{}: {} remote behind'.format(
                 click.style(repo_path, fg='yellow'), len(commits)))
             for commit, msg in commits:
                 click.echo('    {} {}'.format(commit[:6], msg))
@@ -128,7 +128,7 @@ def status(path, branch, remote, verbose, fetch):
             if verbose:
                 click.secho(repo_path, fg='green')
         else:
-            click.echo('{}: {} ahead'.format(
+            click.echo('{}: {} remote ahead'.format(
                 click.style(repo_path, fg='blue'), len(commits)))
             for commit, msg in commits:
                 click.echo('    {} {}'.format(commit[:6], msg))
