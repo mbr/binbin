@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # desktop-open: When linked as NAME, will search for a NAME.desktop file and
 #               open the associated application

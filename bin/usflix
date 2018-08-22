@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # usflix: Launches a SOCKS5 tunnel via SSH, then runs a Netflix app via Google
 # Chrome

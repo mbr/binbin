@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # boring-shell: Opens a boring (== bash) shell with very little information
 # about the real system. Mainly useful for recording screencast-snippets.

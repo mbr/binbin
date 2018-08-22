@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # git-dlist: Show unpushed changes in many repositories.
 
