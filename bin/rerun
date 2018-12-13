@@ -5,9 +5,42 @@
 import click
 import subprocess
 import sys
+import threading
 import time
 
 QUIET = False
+
+
+def limited_pipe(input, output, max):
+    def _():
+        count = 0
+
+        while count < max:
+            line = input.readline()
+            if not line:
+                # exit function once EOF has been reached
+                return
+
+            output.write(line)
+            count += 1
+
+        # additional lines come here
+        erase = 0
+        while True:
+            line = input.readline()
+            if not line:
+                if erase != 0:
+                    output.write(b'\n')
+                return
+            count += 1
+
+            status = '{} additional lines.'.format(count)
+            output.write(b'\b' * erase)
+            output.write(status.encode('utf8'))
+            output.flush()
+            erase = len(status)
+
+    return _
 
 
 def banner(text):
@@ -61,6 +94,11 @@ def info(msg):
     default=['.'],
     help='file or dir to watch (default: .)')
 @click.option(
+    '-n',
+    '--head',
+    type=int,
+    help='Show only first n lines of combined stdout and stderr')
+@click.option(
     '-q',
     '--quiet',
     is_flag=True,
@@ -85,7 +123,7 @@ def info(msg):
     default=None,
     help='Even if successful, rerun if execution took longer than '
     'this many seconds')
-def cli(delay, files, cmd, quiet, clear, clear_and_banner, rerun_on_success):
+def cli(delay, files, head, cmd, quiet, clear, clear_and_banner, rerun_on_success):
     global QUIET
     QUIET = quiet
 
@@ -120,8 +158,26 @@ def cli(delay, files, cmd, quiet, clear, clear_and_banner, rerun_on_success):
         info('running ' + click.style('{}'.format(cmd_name), fg='yellow'))
 
         start = time.time()
-        p = subprocess.Popen(cmd)
+
+        stdout = None
+        stderr = None
+
+        if head is not None:
+            stdout = subprocess.PIPE
+            stderr = subprocess.STDOUT
+
+        p = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
+
+        # We need to launch a thread that consumes stdout:
+        if head:
+            outputter = threading.Thread(target=limited_pipe(p.stdout, sys.stdout.buffer, head))
+            outputter.start()
+
         p.wait()
+
+        if head:
+            outputter.join()
+
         total = time.time() - start
 
         # watch for changes
