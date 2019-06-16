@@ -34,4 +34,4 @@ XAUTH=/tmp/.docker.xauth
 xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
 
 # Run docker, passing in authority and socket.
-exec docker run -ti -v $XSOCK:$XSOCK -v $XAUTH:$XAUTH:ro -e XAUTHORITY=$XAUTH -e DISPLAY=$DISPLAY $@
+exec docker run -v $XSOCK:$XSOCK -v $XAUTH:$XAUTH:ro -e XAUTHORITY=$XAUTH -e DISPLAY=$DISPLAY $@
