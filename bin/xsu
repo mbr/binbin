@@ -32,7 +32,6 @@ fi;
 
 # read cookie, but discard the display name
 COOKIE=$(xauth list :${DISPLAY##*:} | head -n 1 | cut -f 2- -d ' ')
-echo foo bar baz | cut -f 2- -d ' '
 
 # unset XAUTHORITY, otherwise we'll try to write the wrong user's .Xauthority
 unset XAUTHORITY
