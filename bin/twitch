@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+# twitch: Play a twitch stream using `mpv` and `youtube-dl`
+
+# Copyright 2015 Marc Brinkmann
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+# associated documentation files (the "Software"), to deal in the Software without restriction,
+# including without limitation the rights to use, copy, modify, merge, publish, distribute,
+# sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+# NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+# DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+# OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+import os
+import subprocess
+
+import click
+import requests
+
+YOUTUBE_DL = "youtube-dl"
+MPV = 'mpv'
+CONFIGFILE = '~/.twitchchannels'
+
+# Borrowed from twitch frontend code
+CLIENT_ID = '9xxzpexy7eljsjlm0grj01tgjb47ej3'
+
+HEADERS = {'Client-ID': '9xxzpexy7eljsjlm0grj01tgjb47ej3'}
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+def whatson():
+    channels = open(os.path.expanduser(CONFIGFILE)).readlines()
+
+    chan_list = ','.join(name.strip() for name in channels)
+
+    resp = requests.get(
+        'https://api.twitch.tv/kraken/streams',
+        headers=HEADERS,
+        params={'channel': chan_list})
+    resp.raise_for_status()
+    data = resp.json()
+
+    for stream in sorted(data['streams'], key=lambda s: s['channel']['name']):
+        click.echo('{:20}  {}'.format(stream['channel']['name'], stream[
+            'channel']['status']))
+
+
+@cli.command()
+@click.option('--format', '-f', 'fmt')
+@click.option('--proxy', '-p')
+@click.argument('stream')
+def play(stream, fmt, proxy):
+    youtube_dl = os.path.expanduser(YOUTUBE_DL)
+    mpv = os.path.expanduser(MPV)
+
+    if not stream.startswith('http'):
+        stream = 'https://www.twitch.tv/' + stream
+
+    args = [youtube_dl, '--no-call-home', '--buffer-size', '4M', '-o', '-', stream]
+
+    if fmt:
+        args.append('-f')
+        args.append(fmt)
+
+    if proxy:
+        args.append('--proxy')
+        args.append(proxy)
+
+    dl = subprocess.Popen(args, stdout=subprocess.PIPE)
+
+    pl = subprocess.Popen([mpv, '-'], stdin=dl.stdout)
+    pl.wait()
+
+
+if __name__ == '__main__':
+    try:
+        cli()
+    except requests.exceptions.HTTPError as e:
+        click.echo("HTTP Error: {}".format(e))
+        click.echo(e.response.json())
