@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 import re
 import os
 import subprocess
+import shutil
 
 REPO_BASE = os.environ.get("REPO_BASE", "~/repos")
 DOT_GIT = ".git"
@@ -41,7 +42,7 @@ def add_to_autojump(path):
     autojump_bin = shutil.which("autojump")
     if autojump_bin:
         print("Adding {} to autojump".format(path))
-        subprocess.check_call([autojump_bin, "--add", dest])
+        subprocess.check_call([autojump_bin, "--add", path])
 
 
 @dataclass(frozen=True)
