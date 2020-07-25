@@ -30,91 +30,89 @@ import re
 import os
 import subprocess
 
-REPO_BASE = os.environ.get('REPO_BASE', '~/repos')
-DOT_GIT = '.git'
-HTTP_PREFIX = 'http'
-GIT_URL_RE = re.compile('^(?:(?P<user>[a-z]+)@)?(?P<host>[^@]*?):(?P<path>.*)$')
+REPO_BASE = os.environ.get("REPO_BASE", "~/repos")
+DOT_GIT = ".git"
+HTTP_PREFIX = "http"
+GIT_URL_RE = re.compile("^(?:(?P<user>[a-z]+)@)?(?P<host>[^@]*?):(?P<path>.*)$")
 
 
 def add_to_autojump(path):
-	"""If `autojump` is found on path, add a directory to it"""
-	autojump_bin = shutil.which('autojump')
-	if autojump_bin:
-		print("Adding {} to autojump".format(path))
-		subprocess.check_call([autojump_bin, '--add', dest])
-
+    """If `autojump` is found on path, add a directory to it"""
+    autojump_bin = shutil.which("autojump")
+    if autojump_bin:
+        print("Adding {} to autojump".format(path))
+        subprocess.check_call([autojump_bin, "--add", dest])
 
 
 @dataclass(frozen=True)
 class CloneJob:
-	"""Single clone job."""
-	git_url: str
-	host: str
-	repo: List[str]
+    """Single clone job."""
 
-	def run(self):
-		"""Clone repository tp REPO_BASE."""
-		if len(self.repo) < 1:
-			raise 'Cannot clone into root'
+    git_url: str
+    host: str
+    repo: List[str]
 
-		base = os.path.expanduser(REPO_BASE)
-		parent = os.path.join(base, self.host, *self.repo[0:-1])
-		dest = os.path.join(base, self.host, *self.repo)
+    def run(self):
+        """Clone repository tp REPO_BASE."""
+        if len(self.repo) < 1:
+            raise "Cannot clone into root"
 
-		# Ensure parent directory exists.
-		if not os.path.exists(parent):
-			print("Creating {}".format(parent))
-			os.makedirs(parent)
+        base = os.path.expanduser(REPO_BASE)
+        parent = os.path.join(base, self.host, *self.repo[0:-1])
+        dest = os.path.join(base, self.host, *self.repo)
 
-		assert os.path.isdir(parent)
+        # Ensure parent directory exists.
+        if not os.path.exists(parent):
+            print("Creating {}".format(parent))
+            os.makedirs(parent)
 
-		print("Cloning {} into {}".format(self.git_url, dest))
-		subprocess.check_call([
-			'git', 'clone', '--recursive', '--progress', self.git_url, dest,
-		])
+        assert os.path.isdir(parent)
 
-		add_to_autojump(dest)
+        print("Cloning {} into {}".format(self.git_url, dest))
+        subprocess.check_call(
+            ["git", "clone", "--recursive", "--progress", self.git_url, dest]
+        )
+
+        add_to_autojump(dest)
 
 
 def path_to_repo(p):
-	"""Extract name components from URL or Git path."""
-	p = p.strip('/')
-	if p.endswith(DOT_GIT):
-		p = p[:-len(DOT_GIT)]
-	return [c for c in p.split('/') if c not in ('.', '..')]
+    """Extract name components from URL or Git path."""
+    p = p.strip("/")
+    if p.endswith(DOT_GIT):
+        p = p[: -len(DOT_GIT)]
+    return [c for c in p.split("/") if c not in (".", "..")]
 
 
 def repo_url(s):
-	"""Argument parser for repository URLs."""
-	s = s.strip()
+    """Argument parser for repository URLs."""
+    s = s.strip()
 
-	if s.startswith(HTTP_PREFIX):
-		# Parse using URL parser if it is an HTTP address.
-		u = urlparse(s)
-		assert u.host not in ('.', '..')
+    if s.startswith(HTTP_PREFIX):
+        # Parse using URL parser if it is an HTTP address.
+        u = urlparse(s)
+        assert u.host not in (".", "..")
 
-		return CloneJob(git_url=s, host=u.netloc, repo=path_to_repo(u.path))
+        return CloneJob(git_url=s, host=u.netloc, repo=path_to_repo(u.path))
 
-	# Otherwise, use custom parser.
-	m = GIT_URL_RE.match(s)
-	if m:
-		assert m.group('host') not in ('.', '..')
-		return CloneJob(git_url=s,
-						host=m.group('host'),
-						repo=path_to_repo(m.group('path')))
+        # Otherwise, use custom parser.
+    m = GIT_URL_RE.match(s)
+    if m:
+        assert m.group("host") not in (".", "..")
+        return CloneJob(
+            git_url=s, host=m.group("host"), repo=path_to_repo(m.group("path"))
+        )
 
-	raise ValueError('Could not parse repo url {}'.format(s))
+    raise ValueError("Could not parse repo url {}".format(s))
 
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser(
-		description='Clone repository into {}'.format(REPO_BASE)
-	)
-	parser.add_argument('urls',
-						nargs='+',
-						type=repo_url,
-						help='repositories to clone')
 
-	args = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Clone repository into {}".format(REPO_BASE)
+    )
+    parser.add_argument("urls", nargs="+", type=repo_url, help="repositories to clone")
 
-	for job in args.urls:
-		job.run()
+    args = parser.parse_args()
+
+    for job in args.urls:
+        job.run()
