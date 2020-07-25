@@ -36,6 +36,15 @@ HTTP_PREFIX = 'http'
 GIT_URL_RE = re.compile('^(?:(?P<user>[a-z]+)@)?(?P<host>[^@]*?):(?P<path>.*)$')
 
 
+def add_to_autojump(path):
+	"""If `autojump` is found on path, add a directory to it"""
+	autojump_bin = shutil.which('autojump')
+	if autojump_bin:
+		print("Adding {} to autojump".format(path))
+		subprocess.check_call([autojump_bin, '--add', dest])
+
+
+
 @dataclass(frozen=True)
 class CloneJob:
 	"""Single clone job."""
@@ -63,6 +72,8 @@ class CloneJob:
 		subprocess.check_call([
 			'git', 'clone', '--recursive', '--progress', self.git_url, dest,
 		])
+
+		add_to_autojump(dest)
 
 
 def path_to_repo(p):
