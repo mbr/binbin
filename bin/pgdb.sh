@@ -27,6 +27,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 set -e
+set -x
 
 NIX_POSTGRES_PACKAGE=postgresql_11
 
@@ -60,6 +61,7 @@ fi;
 DB=$1
 ADMIN_USER=$(whoami)
 DBNAME=dev
+DEV_USER=dev
 SOCKET=$(readlink -f $DB)
 export PGHOST=$SOCKET
 
@@ -71,7 +73,8 @@ if [ ! -e $DB ]; then
 
   # Initialize with script
   pg_ctl -D $DB -o "-k $SOCKET" start
-  psql -d postgres -c "CREATE DATABASE ${DBNAME} OWNER ${ADMIN_USER};"
+  psql -U ${ADMIN_USER} -d postgres -c "CREATE ROLE ${DEV_USER} LOGIN;"
+  psql -U ${ADMIN_USER} -d postgres -c "CREATE DATABASE ${DBNAME} OWNER ${DEV_USER};"
   pg_ctl -D $DB stop
 fi;
 
@@ -81,7 +84,7 @@ if [ ! -d $DB ]; then
 fi;
 
 echo "You can now connect using either:"
-echo "\e[33mPGHOST=${PGHOST}\e[39;49m"
-echo "\e[33mDATABASE_URL=\"postgres://${ADMIN_USER}@127.0.0.1/${DBNAME}\"\e[39;49m"
+echo -e "\e[33mPGHOST=${PGHOST}\e[39;49m"
+echo -e "\e[33mDATABASE_URL=\"postgres://${DEV_USER}@127.0.0.1/${DBNAME}\"\e[39;49m"
 postgres -D $SOCKET -k $SOCKET
 
