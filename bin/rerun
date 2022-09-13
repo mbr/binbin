@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# argparse, because we don't want external dependenceis
-
 import click
 import subprocess
 import sys
