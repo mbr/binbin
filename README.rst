@@ -32,6 +32,6 @@ their own repository:
 Graveyard
 ---------
 
-* ``pgdb.sh``: Superseded by the dedicated ``pgdb`` tool.
+* ``pgdb.sh``: Superseded by the dedicated `pgdb <https://github.com/mbr/pgdb-rs>`_ tool.
 * ``desktop-open``: Removed with the unused desktop application support.
 * ``xdg-gmail``: Removed because the Chrome-based Gmail launcher was unused.
