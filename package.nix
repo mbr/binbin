@@ -10,7 +10,6 @@
   gitMinimal,
   openssh,
   rsync,
-  byzanz,
   dosfstools,
   inotify-tools,
   ntfs3g,
@@ -35,7 +34,6 @@ let
     rsync
   ]
   ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [
-    byzanz
     dosfstools
     inotify-tools
     ntfs3g
