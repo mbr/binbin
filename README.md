@@ -23,16 +23,10 @@ inputs.binbin.url = "github:mbr/binbin";
 environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
 ```
 
-## Other useful things
-
-Additional tools that would fit into binbin, but have grown enough to warrant
-their own repository:
-
-- https://github.com/mbr/repl
-- https://github.com/mbr/wrimg
-
 ## Graveyard
 
+- `repl`: Moved to the dedicated [`repl`](https://github.com/mbr/repl) repository.
+- `wrimg`: Moved to the dedicated [`wrimg`](https://github.com/mbr/wrimg) repository.
 - `pgdb.sh`: Superseded by the dedicated
   [`pgdb`](https://github.com/mbr/pgdb-rs) tool.
 - `ghci-color`: Removed because modern GHC provides colored diagnostics.
