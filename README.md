@@ -27,13 +27,9 @@ and, if you're lucky, a `--help` flag.
 
 ## Prerequisites
 
-Most tools are self-containted and written in either Python or, if small enough,
-a shell script.
-
-Some may require additional Python packages to be installed systemwide, the most
-common being [click](http://click.pocoo.org),
-[jinja2](http://jinja.pocoo.org), and
-[requests](http://python-requests.org).
+Most tools are written in Python or shell. The Nix package includes their Python
+dependencies; manual installations may need [click](https://click.palletsprojects.com/)
+and [requests](https://requests.readthedocs.io/).
 
 ## Nix
 
