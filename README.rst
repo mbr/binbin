@@ -27,3 +27,11 @@ their own repository:
 
 * https://github.com/mbr/repl
 * https://github.com/mbr/wrimg
+
+
+Graveyard
+---------
+
+* ``pgdb.sh``: Superseded by the dedicated ``pgdb`` tool.
+* ``desktop-open``: Removed with the unused desktop application support.
+* ``xdg-gmail``: Removed because the Chrome-based Gmail launcher was unused.
