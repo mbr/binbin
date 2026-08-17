@@ -19,14 +19,6 @@ most common being `click <http://click.pocoo.org>`_, `jinja2
 <http://jinja.pocoo.org>`_ and `requests <http://python-requests.org>`_.
 
 
-Applications
-------------
-
-Some programs come with ``.desktop`` files to fit neatly into whatever you are
-using to launch your applications. Copy any of these to
-``~/.local/share/applications``.
-
-
 Other useful things
 -------------------
 
