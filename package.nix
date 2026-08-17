@@ -7,6 +7,7 @@
   coreutils,
   ghostscript_headless,
   gitMinimal,
+  binutils,
   openssh,
   rsync,
   yt-dlp,
@@ -18,6 +19,7 @@
 let
   python = python3.withPackages (
     packages: with packages; [
+      asciitree
       click
       requests
     ]
@@ -33,6 +35,7 @@ let
     yt-dlp
   ]
   ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [
+    binutils
     dosfstools
     inotify-tools
     ntfs3g
