@@ -28,5 +28,6 @@ their own repository:
 
 - `pgdb.sh`: Superseded by the dedicated
   [`pgdb`](https://github.com/mbr/pgdb-rs) tool.
+- `ghci-color`: Removed because modern GHC provides colored diagnostics.
 - `desktop-open`: Removed with the unused desktop application support.
 - `xdg-gmail`: Removed because the Chrome-based Gmail launcher was unused.
