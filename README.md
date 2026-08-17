@@ -18,9 +18,10 @@ common being [click](http://click.pocoo.org),
 
 ## Nix
 
-Build the complete collection with `nix build github:mbr/binbin`. It is also
-available as the `binbin` package and as the default package through the
-repository's flake.
+```nix
+inputs.binbin.url = "github:mbr/binbin";
+environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
+```
 
 ## Other useful things
 
