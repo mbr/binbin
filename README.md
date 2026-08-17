@@ -12,7 +12,6 @@ and, if you're lucky, a `--help` flag.
 | --- | --- |
 | [`anycite`](bin/anycite) | Generates BibLaTeX entries from URLs, ISBNs, and GitHub repositories. |
 | [`boring-shell`](bin/boring-shell) | Opens a minimal Bash environment, mainly for recording screencasts. |
-| [`docker-run-x11`](bin/docker-run-x11) | Runs a Docker container with access to the X server. |
 | [`git-autopush`](bin/git-autopush) | Installs a post-commit hook that automatically pushes `master`. |
 | [`git-cl`](bin/git-cl) | Clones repositories into a standardized forge/owner/repository hierarchy. |
 | [`git-dlist`](bin/git-dlist) | Finds unpushed changes across multiple repositories. |
@@ -52,5 +51,6 @@ environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
 - `ppatool`: Removed because it was deprecated and unused.
 - `tpl`: Removed because it was deprecated and unused.
 - `rerun`: Superseded by [`watchexec`](https://watchexec.github.io/).
+- `docker-run-x11`: Removed in favor of declarative Nix development environments.
 - `desktop-open`: Removed with the unused desktop application support.
 - `xdg-gmail`: Removed because the Chrome-based Gmail launcher was unused.
