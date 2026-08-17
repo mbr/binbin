@@ -19,7 +19,6 @@ let
   python = python3.withPackages (
     packages: with packages; [
       click
-      jinja2
       requests
     ]
   );

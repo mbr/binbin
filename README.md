@@ -33,5 +33,8 @@ environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
 - `sstoggle`: Removed because its XScreenSaver-based implementation was unmaintained.
 - `byzanz-record-window`: Removed because Byzanz was unmaintained.
 - `compile-dts`: Removed because its device-tree compilation workflow had bit-rotted.
+- `pdftoc`: Removed because it was deprecated and unused.
+- `ppatool`: Removed because it was deprecated and unused.
+- `tpl`: Removed because it was deprecated and unused.
 - `desktop-open`: Removed with the unused desktop application support.
 - `xdg-gmail`: Removed because the Chrome-based Gmail launcher was unused.
