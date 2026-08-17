@@ -16,6 +16,12 @@ common being [click](http://click.pocoo.org),
 [jinja2](http://jinja.pocoo.org), and
 [requests](http://python-requests.org).
 
+## Nix
+
+Build the complete collection with `nix build github:mbr/binbin`. It is also
+available as the `binbin` package and as the default package through the
+repository's flake.
+
 ## Other useful things
 
 Additional tools that would fit into binbin, but have grown enough to warrant
