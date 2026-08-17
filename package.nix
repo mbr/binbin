@@ -15,8 +15,6 @@
   inotify-tools,
   ntfs3g,
   xauth,
-  xscreensaver,
-  xset,
 }:
 let
   python = python3.withPackages (
@@ -42,8 +40,6 @@ let
     inotify-tools
     ntfs3g
     xauth
-    xscreensaver
-    xset
   ];
 in
 stdenvNoCC.mkDerivation {
