@@ -16,7 +16,6 @@ and, if you're lucky, a `--help` flag.
 | [`git-cl`](bin/git-cl) | Clones repositories into a standardized forge/owner/repository hierarchy. |
 | [`git-dlist`](bin/git-dlist) | Finds unpushed changes across multiple repositories. |
 | [`git-nuke`](bin/git-nuke) | Removes a file from every branch and tag in a Git repository. |
-| [`ldtree`](bin/ldtree) | Recursively displays shared-library dependencies. |
 | [`mkusbstick`](bin/mkusbstick) | Formats USB drives for compatibility with Linux, Windows, and macOS. |
 | [`pdfmail`](bin/pdfmail) | Downsamples and optionally grayscales PDFs for email. |
 | [`shellcolors`](bin/shellcolors) | Prints a terminal color table on different backgrounds. |
@@ -52,5 +51,6 @@ environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
 - `tpl`: Removed because it was deprecated and unused.
 - `rerun`: Superseded by [`watchexec`](https://watchexec.github.io/).
 - `docker-run-x11`: Removed in favor of declarative Nix development environments.
+- `ldtree`: Superseded by [`libtree`](https://github.com/haampie/libtree).
 - `desktop-open`: Removed with the unused desktop application support.
 - `xdg-gmail`: Removed because the Chrome-based Gmail launcher was unused.
