@@ -5,7 +5,6 @@
   python3,
   bash,
   coreutils,
-  gcc-unwrapped,
   ghostscript_headless,
   gitMinimal,
   openssh,
@@ -28,7 +27,6 @@ let
   runtimeInputs = [
     bash
     coreutils
-    gcc-unwrapped
     ghostscript_headless
     gitMinimal
     openssh
