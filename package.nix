@@ -10,6 +10,7 @@
   gitMinimal,
   openssh,
   rsync,
+  yt-dlp,
   dosfstools,
   inotify-tools,
   ntfs3g,
@@ -32,6 +33,7 @@ let
     gitMinimal
     openssh
     rsync
+    yt-dlp
   ]
   ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [
     dosfstools
