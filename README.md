@@ -6,6 +6,25 @@ are not large enough yet to warrant their own project.
 Each file usually comes with a descriptive name, documentation inside the file
 and, if you're lucky, a `--help` flag.
 
+## Tools
+
+| Tool | Description |
+| --- | --- |
+| [`anycite`](bin/anycite) | Generates BibLaTeX entries from URLs, ISBNs, and GitHub repositories. |
+| [`boring-shell`](bin/boring-shell) | Opens a minimal Bash environment, mainly for recording screencasts. |
+| [`docker-run-x11`](bin/docker-run-x11) | Runs a Docker container with access to the X server. |
+| [`git-autopush`](bin/git-autopush) | Installs a post-commit hook that automatically pushes `master`. |
+| [`git-cl`](bin/git-cl) | Clones repositories into a standardized forge/owner/repository hierarchy. |
+| [`git-dlist`](bin/git-dlist) | Finds unpushed changes across multiple repositories. |
+| [`git-nuke`](bin/git-nuke) | Removes a file from every branch and tag in a Git repository. |
+| [`ldtree`](bin/ldtree) | Recursively displays shared-library dependencies. |
+| [`mkusbstick`](bin/mkusbstick) | Formats USB drives for compatibility with Linux, Windows, and macOS. |
+| [`pdfmail`](bin/pdfmail) | Downsamples and optionally grayscales PDFs for email. |
+| [`shellcolors`](bin/shellcolors) | Prints a terminal color table on different backgrounds. |
+| [`syncto`](bin/syncto) | Watches a directory and synchronizes changes to a remote using `rsync`. |
+| [`twitch`](bin/twitch) | Plays Twitch streams through `yt-dlp` and `mpv`. |
+| [`xsu`](bin/xsu) | Transfers Xauthority credentials before opening a shell as another user. |
+
 ## Prerequisites
 
 Most tools are self-containted and written in either Python or, if small enough,
