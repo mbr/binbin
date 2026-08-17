@@ -31,10 +31,21 @@ and [requests](https://requests.readthedocs.io/).
 
 ## Nix
 
+Add `github:mbr/binbin` as `inputs.binbin`. The default package contains all
+tools; each tool is also available separately, for example as
+`packages.<system>.twitch`.
+
+For Home Manager, import the module and enable either individual tools or all of
+them:
+
 ```nix
-inputs.binbin.url = "github:mbr/binbin";
-environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
+imports = [ inputs.binbin.homeManagerModules.default ];
+programs.binbin.twitch.enable = true;
+# programs.binbin.enable = true;
 ```
+
+The module works without an overlay. The optional overlay provides `pkgs.binbin`
+and `pkgs.binbinPackages.<tool>`.
 
 ## Graveyard
 
