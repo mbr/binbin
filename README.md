@@ -36,5 +36,6 @@ environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
 - `pdftoc`: Removed because it was deprecated and unused.
 - `ppatool`: Removed because it was deprecated and unused.
 - `tpl`: Removed because it was deprecated and unused.
+- `rerun`: Superseded by [`watchexec`](https://watchexec.github.io/).
 - `desktop-open`: Removed with the unused desktop application support.
 - `xdg-gmail`: Removed because the Chrome-based Gmail launcher was unused.
