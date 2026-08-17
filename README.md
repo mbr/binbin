@@ -38,19 +38,19 @@ environment.systemPackages = [ inputs.binbin.packages.${pkgs.system}.default ];
 
 ## Graveyard
 
-- `repl`: Moved to the dedicated [`repl`](https://github.com/mbr/repl) repository.
-- `wrimg`: Moved to the dedicated [`wrimg`](https://github.com/mbr/wrimg) repository.
-- `pgdb.sh`: Superseded by the dedicated
-  [`pgdb`](https://github.com/mbr/pgdb-rs) tool.
-- `ghci-color`: Removed because modern GHC provides colored diagnostics.
-- `sstoggle`: Removed because its XScreenSaver-based implementation was unmaintained.
 - `byzanz-record-window`: Removed because Byzanz was unmaintained.
 - `compile-dts`: Removed because its device-tree compilation workflow had bit-rotted.
-- `pdftoc`: Removed because it was deprecated and unused.
-- `ppatool`: Removed because it was deprecated and unused.
-- `tpl`: Removed because it was deprecated and unused.
-- `rerun`: Superseded by [`watchexec`](https://watchexec.github.io/).
-- `docker-run-x11`: Removed in favor of declarative Nix development environments.
-- `ldtree`: Superseded by [`libtree`](https://github.com/haampie/libtree).
 - `desktop-open`: Removed with the unused desktop application support.
+- `docker-run-x11`: Removed in favor of declarative Nix development environments.
+- `ghci-color`: Removed because modern GHC provides colored diagnostics.
+- `ldtree`: Superseded by [`libtree`](https://github.com/haampie/libtree).
+- `pdftoc`: Removed because it was deprecated and unused.
+- `pgdb.sh`: Superseded by the dedicated
+  [`pgdb`](https://github.com/mbr/pgdb-rs) tool.
+- `ppatool`: Removed because it was deprecated and unused.
+- `repl`: Moved to the dedicated [`repl`](https://github.com/mbr/repl) repository.
+- `rerun`: Superseded by [`watchexec`](https://watchexec.github.io/).
+- `sstoggle`: Removed because its XScreenSaver-based implementation was unmaintained.
+- `tpl`: Removed because it was deprecated and unused.
+- `wrimg`: Moved to the dedicated [`wrimg`](https://github.com/mbr/wrimg) repository.
 - `xdg-gmail`: Removed because the Chrome-based Gmail launcher was unused.
