@@ -15,9 +15,15 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
-      overlays.default = final: _prev: {
-        binbin = final.callPackage ./package.nix { };
-      };
+      overlays.default =
+        final: _prev:
+        let
+          binbin = final.callPackage ./package.nix { };
+        in
+        {
+          inherit binbin;
+          binbinPackages = binbin.tools;
+        };
 
       packages = forAllSystems (
         system:
@@ -29,6 +35,7 @@
           inherit binbin;
           default = binbin;
         }
+        // binbin.tools
       );
 
       formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
